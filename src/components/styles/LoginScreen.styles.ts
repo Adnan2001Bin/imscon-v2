@@ -1,4 +1,6 @@
-import { StyleSheet } from 'react-native';
+import { Dimensions, StyleSheet } from 'react-native';
+
+const { width } = Dimensions.get('window');
 
 export const loginScreenStyles = StyleSheet.create({
   container: {
@@ -7,63 +9,170 @@ export const loginScreenStyles = StyleSheet.create({
   gradient: {
     flex: 1,
     alignItems: 'center',
-    paddingHorizontal: 16,
   },
   scrollView: {
     flex: 1,
     width: '100%',
-    overflow: 'visible',
   },
   scrollContent: {
     flexGrow: 1,
-    alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 32,
   },
   content: {
     width: '100%',
     alignItems: 'center',
+    paddingHorizontal: 24,
   },
-  logoPlaceholder: {
-    width: 220,
-    height: 52,
-    borderRadius: 8,
-    justifyContent: 'center',
+  
+  // Header Section
+  header: {
+    width: '100%',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 32,
   },
-  logoText: {
-    color: '#ffffff',
-    fontSize: 20,
-    fontWeight: 'bold',
+  logoContainer: {
+    width: 300,
+    height: 90,
+    marginBottom: 24,
   },
   logoImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 8,
-    resizeMode: 'contain',
-    marginBottom: 16
+  },
+  welcomeSection: {
+    alignItems: 'center',
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     color: '#11181C',
-    marginBottom: 6,
+    marginBottom: 8,
     textAlign: 'center',
+    letterSpacing: -0.5,
+    fontWeight: 'bold'
   },
   subtitle: {
-    fontSize: 15,
+    fontSize: 16,
     color: '#1c1c1c',
     textAlign: 'center',
-    marginBottom: 24,
+    lineHeight: 22,
   },
-  formContainer: {
+
+  // Form Card
+  formCard: {
     width: '100%',
     maxWidth: 400,
-    marginTop: 18,
     backgroundColor: '#FFFFFF',
-    padding: 20,
-    borderRadius: 12,
+    borderRadius: 16,
+    padding: 24,
     shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: '#fef2f2',
+  },
+
+  // Tabs
+  tabContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#fef2f2',
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 24,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  activeTab: {
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  tabText: {
+    fontSize: 15,
+    color: '#6B7280',
+    fontFamily: 'Inter_500Medium',
+  },
+  activeTabText: {
+    color: '#11181C',
+    fontFamily: 'Inter_600SemiBold',
+  },
+
+  // Form Content
+  formContent: {
+    width: '100%',
+  },
+  successContainer: {
+    backgroundColor: '#f0fdf4',
+    borderWidth: 1,
+    borderColor: '#bbf7d0',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+  },
+  successText: {
+    fontSize: 14,
+    color: '#166534',
+    textAlign: 'center',
+    fontFamily: 'Inter_500Medium',
+  },
+
+  // Input Styles
+  inputContainer: {
+    marginBottom: 20,
+  },
+  label: {
+    fontSize: 14,
+    color: '#374151',
+    marginBottom: 8,
+    fontFamily: 'Inter_500Medium',
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 16,
+    color: '#11181C',
+    backgroundColor: '#FFFFFF',
+    fontFamily: 'Inter_400Regular',
+  },
+  inputError: {
+    borderColor: '#DC2626',
+    backgroundColor: '#fef2f2',
+  },
+  errorText: {
+    fontSize: 13,
+    color: '#DC2626',
+    marginTop: 6,
+    fontFamily: 'Inter_400Regular',
+  },
+
+  // Button Styles
+  primaryButton: {
+    width: '100%',
+    backgroundColor: '#000000',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000000',
     shadowOffset: {
       width: 0,
       height: 2,
@@ -72,148 +181,104 @@ export const loginScreenStyles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  formHeader: {
-    paddingBottom: 0,
-    marginBottom: 16,
+  registerButton: {
+    backgroundColor: '##FFFFFF',
   },
-  formTitle: {
-    fontSize: 20,
-    color: '#111827',
-    marginBottom: 8,
-  },
-  formSubtitle: {
-    fontSize: 14,
-    color: '#6B7280',
-  },
-  formContent: {
-    marginTop: 7,
-  },
-  successText: {
+  primaryButtonText: {
+    color: '#FFFFFF',
     fontSize: 16,
-    color: '#16A34A',
-    marginBottom: 12,
-  },
-  label: {
-    fontSize: 16,
-    color: '#374151',
-    marginBottom: 12,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    fontSize: 16,
-    width: '100%',
-    color: '#11181C',
-    backgroundColor: '#FFFFFF',
-  },
-  errorText: {
-    fontSize: 14,
-    color: '#DC2626',
-    marginTop: 4,
-  },
-  button: {
-    width: '100%',
-    marginTop: 16,
-    backgroundColor: '#000000',
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
   },
   buttonDisabled: {
     opacity: 0.6,
   },
-  buttonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
+  secondaryButton: {
+    width: '100%',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    backgroundColor: '#FFFFFF',
   },
-  switchModeButton: {
-    marginTop: 16,
+  secondaryButtonText: {
+    color: '#374151',
+    fontSize: 15,
+    fontFamily: 'Inter_500Medium',
+  },
+  secondaryButtonTextBold: {
+    color: '#374151',
+    fontSize: 15,
+    fontFamily: 'Inter_600SemiBold',
+    fontWeight: 'bold'
+  },
+  textButton: {
+    width: '100%',
+    paddingVertical: 12,
     alignItems: 'center',
   },
-  switchModeText: {
-    fontSize: 16,
-    color: '#374151',
+  textButtonText: {
+    color: '#6B7280',
+    fontSize: 14,
+    fontFamily: 'Inter_500Medium',
   },
-  switchModeLink: {
-    fontWeight: 'bold',
-    textDecorationLine: 'underline',
+
+  // Divider
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 20,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#E5E7EB',
+  },
+  dividerText: {
+    color: '#6B7280',
+    fontSize: 14,
+    marginHorizontal: 12,
+    fontFamily: 'Inter_400Regular',
+  },
+
+  // OTP Section
+  otpHeader: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  otpTitle: {
+    fontSize: 20,
+    color: '#11181C',
+    marginBottom: 8,
+    fontFamily: 'Inter_600SemiBold',
+  },
+  otpSubtitle: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+    fontFamily: 'Inter_400Regular',
   },
   emailHighlight: {
-    fontWeight: '500',
-  },
-  registerButton: {
-    backgroundColor: '#DC2626', // Red color for register button
-  },
-  // Dialog styles
-  dialogOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 1000,
-  },
-  dialogContainer: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 20,
-    marginHorizontal: 32,
-    width: '80%',
-    maxWidth: 300,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  dialogTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
     color: '#11181C',
-    marginBottom: 12,
+    fontFamily: 'Inter_600SemiBold',
+  },
+
+  // Footer
+  footer: {
+    width: '100%',
+    maxWidth: 400,
+    marginTop: 32,
+    paddingHorizontal: 16,
+  },
+  footerText: {
+    fontSize: 12,
+    color: '#6B7280',
     textAlign: 'center',
+    lineHeight: 16,
+    fontFamily: 'Inter_400Regular',
   },
-  dialogMessage: {
-    fontSize: 16,
-    color: '#374151',
-    textAlign: 'center',
-    marginBottom: 20,
-    lineHeight: 22,
-  },
-  dialogButtonsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 16,
-  },
-  dialogButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  dialogCancelButton: {
-    backgroundColor: '#F3F4F6',
-  },
-  dialogSignUpButton: {
-    backgroundColor: '#18181B',
-  },
-  dialogCancelText: {
-    color: '#374151',
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  dialogSignUpText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '500',
+  footerLink: {
+    color: '#11181C',
+    textDecorationLine: 'underline',
+    fontFamily: 'Inter_500Medium',
   },
 });

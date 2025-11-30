@@ -18,6 +18,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../lib/supabase';
 import queryKeys from '../constants/queryKeys';
 import MobileHeader from '../MobileHeader';
+import { completeProfileScreenStyles as styles } from '../styles/CompleteProfileScreen.styles';
 
 // Types
 type TExhibitorCompany = {
@@ -101,7 +102,6 @@ export default function CompleteProfileScreen({ onProfileComplete, onLogout }: C
   // If the user is an admin or super_admin, skip this screen and allow access to main app
   React.useEffect(() => {
     if (user && (user.role === 'admin' || user.role === 'super_admin')) {
-
       // Invalidate queries so the root layout re-evaluates and navigates to the main app
       // Query invalidation triggers the AuthenticatedApp check in app/_layout.tsx
       const invalidate = async () => {
@@ -499,155 +499,97 @@ export default function CompleteProfileScreen({ onProfileComplete, onLogout }: C
 
   const progress = getProgress()
 
-  // Determine button text and icon based on user role and current tab
-  const getProfileButtonProps = () => {
-    // If exhibitor on the individual tab, prompt to continue to company profile
-    if (user?.role === 'exhibitor' && activeTab === 'individual') {
-      return {
-        text: 'Continue',
-        icon: ArrowRight,
-        iconSize: 20,
-        iconColor: '#ffffff'
-      }
-    }
-
-    return {
-      text: 'Save Profile',
-      icon: Save,
-      iconSize: 20,
-      iconColor: '#ffffff'
-    }
-  }
-
-  // Header handlers
-  const handleNotificationPress = () => {
-    Alert.alert('Notifications', 'Notifications feature coming soon!')
-  }
-
-  const handleProfilePress = () => {
-    Alert.alert('Profile', 'Profile view coming soon!')
-  }
-
   return (
-    <View style={{ flex: 1, backgroundColor: '#f3f4f6' }}>
+    <View style={styles.container}>
       <MobileHeader
         showCompactMode={true}
         onLogout={onLogout}
       />
-      <LinearGradient colors={["#fef2f2", "#fee2e2"]} style={{ flex: 1 }}>
+      <LinearGradient colors={["#fef2f2", "#fee2e2"]} style={styles.gradient}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={{ flex: 1 }}
+          style={styles.keyboardAvoidingView}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 24}
         >
           <ScrollView
-            style={{ flex: 1 }}
-            contentContainerStyle={{ paddingTop: 20, paddingBottom: 20, paddingHorizontal: 16 }}
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
           >
             {/* Header */}
-            <View style={{ marginBottom: 24 }}>
-              <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 24, color: '#1c1c1c', marginBottom: 4 }}>
+            <View style={styles.header}>
+              <Text style={styles.headerTitle}>
                 Complete Your Profile
               </Text>
-              <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 15, color: '#1c1c1c', textAlign: 'left' }}>
+              <Text style={styles.headerSubtitle}>
                 Complete your profile information to access the app and connect with other attendees
               </Text>
             </View>
 
             {/* Progress */}
-            <View style={{ marginBottom: 24 }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-                <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 14, color: '#374151' }}>Progress</Text>
-                <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 14, color: '#6B7280' }}>
+            <View style={styles.progressContainer}>
+              <View style={styles.progressHeader}>
+                <Text style={styles.progressLabel}>Progress</Text>
+                <Text style={styles.progressCount}>
                   {progress.completed}/{progress.total} completed
                 </Text>
               </View>
-              <View style={{
-                height: 8,
-                backgroundColor: '#E5E7EB',
-                borderRadius: 4,
-                overflow: 'hidden'
-              }}>
-                <View style={{
-                  height: '100%',
-                  backgroundColor: '#DC2626',
-                  borderRadius: 4,
-                  width: `${progress.percentage}%`
-                }} />
+              <View style={styles.progressBar}>
+                <View style={[styles.progressFill, { width: `${progress.percentage}%` }]} />
               </View>
             </View>
 
             {/* Profile Form */}
-            <View style={{
-              backgroundColor: 'white',
-              borderRadius: 12,
-              padding: 20,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 1 },
-              shadowOpacity: 0.1,
-              shadowRadius: 2,
-              elevation: 2
-            }}>
+            <View style={styles.formCard}>
               {user?.role === 'exhibitor' ? (
                 /* Tabs for Exhibitor Users */
                 <>
                   {/* Tab Header */}
-                  <View style={{ marginBottom: 16 }}>
-                    <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 20, color: '#111827', marginBottom: 4 }}>
+                  <View style={styles.tabHeader}>
+                    <Text style={styles.tabTitle}>
                       Complete Your Profile
                     </Text>
-                    <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 14, color: '#6B7280' }}>
+                    <Text style={styles.tabSubtitle}>
                       Both individual and company profiles are required to access the app
                     </Text>
                   </View>
 
                   {/* Tab Status */}
-                  <View style={{ flexDirection: 'row', marginBottom: 16 }}>
-                    <View style={{ flex: 1, alignItems: 'center', paddingVertical: 8 }}>
-                      <Text style={{
-                        fontFamily: 'Inter_500Medium',
-                        fontSize: 12,
-                        color: user?.profile_completed ? '#059669' : '#DC2626',
-                        marginBottom: 4
-                      }}>
+                  <View style={styles.tabStatusContainer}>
+                    <View style={styles.tabStatusItem}>
+                      <Text style={[
+                        styles.tabStatusLabel,
+                        { color: user?.profile_completed ? '#059669' : '#DC2626' }
+                      ]}>
                         Individual Profile
                       </Text>
-                      <View style={{
-                        paddingHorizontal: 8,
-                        paddingVertical: 2,
-                        borderRadius: 12,
-                        backgroundColor: user?.profile_completed ? '#ECFDF5' : '#FEF2F2'
-                      }}>
-                        <Text style={{
-                          fontFamily: 'Inter_500Medium',
-                          fontSize: 10,
-                          color: user?.profile_completed ? '#059669' : '#DC2626'
-                        }}>
+                      <View style={[
+                        styles.tabStatusBadge,
+                        { backgroundColor: user?.profile_completed ? '#ECFDF5' : '#FEF2F2' }
+                      ]}>
+                        <Text style={[
+                          styles.tabStatusText,
+                          { color: user?.profile_completed ? '#059669' : '#DC2626' }
+                        ]}>
                           {user?.profile_completed ? 'Complete' : 'Incomplete'}
                         </Text>
                       </View>
                     </View>
-                    <View style={{ flex: 1, alignItems: 'center', paddingVertical: 8 }}>
-                      <Text style={{
-                        fontFamily: 'Inter_500Medium',
-                        fontSize: 12,
-                        color: user?.company_profile_completed ? '#059669' : '#DC2626',
-                        marginBottom: 4
-                      }}>
+                    <View style={styles.tabStatusItem}>
+                      <Text style={[
+                        styles.tabStatusLabel,
+                        { color: user?.company_profile_completed ? '#059669' : '#DC2626' }
+                      ]}>
                         Company Profile
                       </Text>
-                      <View style={{
-                        paddingHorizontal: 8,
-                        paddingVertical: 2,
-                        borderRadius: 12,
-                        backgroundColor: user?.company_profile_completed ? '#ECFDF5' : '#FEF2F2'
-                      }}>
-                        <Text style={{
-                          fontFamily: 'Inter_500Medium',
-                          fontSize: 10,
-                          color: user?.company_profile_completed ? '#059669' : '#DC2626'
-                        }}>
+                      <View style={[
+                        styles.tabStatusBadge,
+                        { backgroundColor: user?.company_profile_completed ? '#ECFDF5' : '#FEF2F2' }
+                      ]}>
+                        <Text style={[
+                          styles.tabStatusText,
+                          { color: user?.company_profile_completed ? '#059669' : '#DC2626' }
+                        ]}>
                           {user?.company_profile_completed ? 'Complete' : 'Incomplete'}
                         </Text>
                       </View>
@@ -655,47 +597,32 @@ export default function CompleteProfileScreen({ onProfileComplete, onLogout }: C
                   </View>
 
                   {/* Tab Buttons */}
-                  <View style={{
-                    flexDirection: 'row',
-                    backgroundColor: '#F3F4F6',
-                    borderRadius: 8,
-                    marginBottom: 20
-                  }}>
+                  <View style={styles.tabContainer}>
                     <TouchableOpacity
-                      style={{
-                        flex: 1,
-                        paddingVertical: 12,
-                        backgroundColor: activeTab === 'individual' ? 'white' : 'transparent',
-                        borderRadius: 8,
-                        margin: 2
-                      }}
+                      style={[
+                        styles.tab,
+                        activeTab === 'individual' && styles.activeTab
+                      ]}
                       onPress={() => setActiveTab('individual')}
                     >
-                      <Text style={{
-                        fontFamily: 'Inter_500Medium',
-                        fontSize: 14,
-                        color: activeTab === 'individual' ? '#111827' : '#6B7280',
-                        textAlign: 'center'
-                      }}>
+                      <Text style={[
+                        styles.tabText,
+                        activeTab === 'individual' ? styles.activeTabText : styles.inactiveTabText
+                      ]}>
                         Individual Profile
                       </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={{
-                        flex: 1,
-                        paddingVertical: 12,
-                        backgroundColor: activeTab === 'company' ? 'white' : 'transparent',
-                        borderRadius: 8,
-                        margin: 2
-                      }}
+                      style={[
+                        styles.tab,
+                        activeTab === 'company' && styles.activeTab
+                      ]}
                       onPress={() => setActiveTab('company')}
                     >
-                      <Text style={{
-                        fontFamily: 'Inter_500Medium',
-                        fontSize: 14,
-                        color: activeTab === 'company' ? '#111827' : '#6B7280',
-                        textAlign: 'center'
-                      }}>
+                      <Text style={[
+                        styles.tabText,
+                        activeTab === 'company' ? styles.activeTabText : styles.inactiveTabText
+                      ]}>
                         Company Profile
                       </Text>
                     </TouchableOpacity>
@@ -723,11 +650,11 @@ export default function CompleteProfileScreen({ onProfileComplete, onLogout }: C
               ) : (
                 /* Single Form for Non-Exhibitor Users */
                 <>
-                  <View style={{ marginBottom: 16 }}>
-                    <Text style={{ fontFamily: 'Inter_700Bold', fontSize: 20, color: '#111827', marginBottom: 4 }}>
+                  <View style={styles.tabHeader}>
+                    <Text style={styles.tabTitle}>
                       Profile Setup
                     </Text>
-                    <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 14, color: '#6B7280' }}>
+                    <Text style={styles.tabSubtitle}>
                       Individual profile is required to access the app
                     </Text>
                   </View>
@@ -773,16 +700,12 @@ function IndividualProfileForm({
       return {
         text: 'Continue',
         icon: ArrowRight,
-        iconSize: 20,
-        iconColor: '#ffffff'
       }
     }
 
     return {
       text: 'Save Profile',
       icon: Save,
-      iconSize: 20,
-      iconColor: '#ffffff'
     }
   }
 
@@ -790,25 +713,18 @@ function IndividualProfileForm({
 
   return (
     <View>
-      <View style={{ flexDirection: 'column', gap: 16, marginBottom: 16 }}>
-        <View style={{ width: '100%' }}>
-          <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 14, color: '#374151', marginBottom: 8 }}>
-            Full Name *
-          </Text>
+      <View style={styles.inputRow}>
+        <View style={styles.inputFullWidth}>
+          <Text style={styles.label}>Full Name *</Text>
           <Controller
             control={form.control}
             name="name"
             render={({ field: { onChange, value } }: { field: ControllerFieldProps }) => (
               <TextInput
-                style={{
-                  borderWidth: 1,
-                  borderColor: '#D1D5DB',
-                  borderRadius: 8,
-                  paddingHorizontal: 12,
-                  paddingVertical: 12,
-                  fontSize: 16,
-                  backgroundColor: 'white'
-                }}
+                style={[
+                  styles.input,
+                  form.formState.errors.name && styles.inputError
+                ]}
                 placeholder="John Doe"
                 value={value}
                 onChangeText={onChange}
@@ -816,32 +732,25 @@ function IndividualProfileForm({
             )}
           />
           {form.formState.errors.name && (
-            <Text style={{ fontSize: 12, color: '#DC2626', marginTop: 4 }}>
+            <Text style={styles.errorText}>
               {form.formState.errors.name.message}
             </Text>
           )}
         </View>
       </View>
 
-      <View style={{ flexDirection: 'column', gap: 16, marginBottom: 16 }}>
-        <View style={{ width: '100%' }}>
-          <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 14, color: '#374151', marginBottom: 8 }}>
-            Designation/Role *
-          </Text>
+      <View style={styles.inputRow}>
+        <View style={styles.inputFullWidth}>
+          <Text style={styles.label}>Designation/Role *</Text>
           <Controller
             control={form.control}
             name="designation"
             render={({ field: { onChange, value } }: { field: ControllerFieldProps }) => (
               <TextInput
-                style={{
-                  borderWidth: 1,
-                  borderColor: '#D1D5DB',
-                  borderRadius: 8,
-                  paddingHorizontal: 12,
-                  paddingVertical: 12,
-                  fontSize: 16,
-                  backgroundColor: 'white'
-                }}
+                style={[
+                  styles.input,
+                  form.formState.errors.designation && styles.inputError
+                ]}
                 placeholder="Managing Director"
                 value={value}
                 onChangeText={onChange}
@@ -849,32 +758,25 @@ function IndividualProfileForm({
             )}
           />
           {form.formState.errors.designation && (
-            <Text style={{ fontSize: 12, color: '#DC2626', marginTop: 4 }}>
+            <Text style={styles.errorText}>
               {form.formState.errors.designation.message}
             </Text>
           )}
         </View>
       </View>
 
-      <View style={{ flexDirection: 'column', gap: 16, marginBottom: 16 }}>
-        <View style={{ width: '100%' }}>
-          <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 14, color: '#374151', marginBottom: 8 }}>
-            Phone Number *
-          </Text>
+      <View style={styles.inputRow}>
+        <View style={styles.inputFullWidth}>
+          <Text style={styles.label}>Phone Number *</Text>
           <Controller
             control={form.control}
             name="phone"
             render={({ field: { onChange, value } }: { field: ControllerFieldProps }) => (
               <TextInput
-                style={{
-                  borderWidth: 1,
-                  borderColor: '#D1D5DB',
-                  borderRadius: 8,
-                  paddingHorizontal: 12,
-                  paddingVertical: 12,
-                  fontSize: 16,
-                  backgroundColor: 'white'
-                }}
+                style={[
+                  styles.input,
+                  form.formState.errors.phone && styles.inputError
+                ]}
                 placeholder="+91 9876543210"
                 value={value}
                 onChangeText={onChange}
@@ -883,32 +785,25 @@ function IndividualProfileForm({
             )}
           />
           {form.formState.errors.phone && (
-            <Text style={{ fontSize: 12, color: '#DC2626', marginTop: 4 }}>
+            <Text style={styles.errorText}>
               {form.formState.errors.phone.message}
             </Text>
           )}
         </View>
       </View>
 
-      <View style={{ flexDirection: 'column', gap: 16, marginBottom: 16 }}>
-        <View style={{ width: '100%' }}>
-          <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 14, color: '#374151', marginBottom: 8 }}>
-            LinkedIn Profile
-          </Text>
+      <View style={styles.inputRow}>
+        <View style={styles.inputFullWidth}>
+          <Text style={styles.label}>LinkedIn Profile</Text>
           <Controller
             control={form.control}
             name="linkedin"
             render={({ field: { onChange, value } }: { field: ControllerFieldProps }) => (
               <TextInput
-                style={{
-                  borderWidth: 1,
-                  borderColor: '#D1D5DB',
-                  borderRadius: 8,
-                  paddingHorizontal: 12,
-                  paddingVertical: 12,
-                  fontSize: 16,
-                  backgroundColor: 'white'
-                }}
+                style={[
+                  styles.input,
+                  form.formState.errors.linkedin && styles.inputError
+                ]}
                 placeholder="linkedin.com/in/johndoe"
                 value={value}
                 onChangeText={onChange}
@@ -917,31 +812,24 @@ function IndividualProfileForm({
             )}
           />
           {form.formState.errors.linkedin && (
-            <Text style={{ fontSize: 12, color: '#DC2626', marginTop: 4 }}>
+            <Text style={styles.errorText}>
               {form.formState.errors.linkedin.message}
             </Text>
           )}
         </View>
       </View>
 
-      <View style={{ marginBottom: 16 }}>
-        <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 14, color: '#374151', marginBottom: 8 }}>
-          Address
-        </Text>
+      <View style={styles.inputContainer}>
+        <Text style={styles.label}>Address</Text>
         <Controller
           control={form.control}
           name="address"
           render={({ field: { onChange, value } }: { field: ControllerFieldProps }) => (
             <TextInput
-              style={{
-                borderWidth: 1,
-                borderColor: '#D1D5DB',
-                borderRadius: 8,
-                paddingHorizontal: 12,
-                paddingVertical: 12,
-                fontSize: 16,
-                backgroundColor: 'white'
-              }}
+              style={[
+                styles.input,
+                form.formState.errors.address && styles.inputError
+              ]}
               placeholder="Plot No. 14, Peenya Industrial Area"
               value={value}
               onChangeText={onChange}
@@ -949,31 +837,24 @@ function IndividualProfileForm({
           )}
         />
         {form.formState.errors.address && (
-          <Text style={{ fontSize: 12, color: '#DC2626', marginTop: 4 }}>
+          <Text style={styles.errorText}>
             {form.formState.errors.address.message}
           </Text>
         )}
       </View>
 
-      <View style={{ flexDirection: 'column', gap: 16, marginBottom: 16 }}>
-        <View style={{ width: '100%' }}>
-          <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 14, color: '#374151', marginBottom: 8 }}>
-            City *
-          </Text>
+      <View style={styles.inputRow}>
+        <View style={styles.inputFullWidth}>
+          <Text style={styles.label}>City *</Text>
           <Controller
             control={form.control}
             name="city"
             render={({ field: { onChange, value } }: { field: ControllerFieldProps }) => (
               <TextInput
-                style={{
-                  borderWidth: 1,
-                  borderColor: '#D1D5DB',
-                  borderRadius: 8,
-                  paddingHorizontal: 12,
-                  paddingVertical: 12,
-                  fontSize: 16,
-                  backgroundColor: 'white'
-                }}
+                style={[
+                  styles.input,
+                  form.formState.errors.city && styles.inputError
+                ]}
                 placeholder="Bengaluru"
                 value={value}
                 onChangeText={onChange}
@@ -981,32 +862,25 @@ function IndividualProfileForm({
             )}
           />
           {form.formState.errors.city && (
-            <Text style={{ fontSize: 12, color: '#DC2626', marginTop: 4 }}>
+            <Text style={styles.errorText}>
               {form.formState.errors.city.message}
             </Text>
           )}
         </View>
       </View>
 
-      <View style={{ flexDirection: 'column', gap: 16, marginBottom: 16 }}>
-        <View style={{ width: '100%' }}>
-          <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 14, color: '#374151', marginBottom: 8 }}>
-            Country *
-          </Text>
+      <View style={styles.inputRow}>
+        <View style={styles.inputFullWidth}>
+          <Text style={styles.label}>Country *</Text>
           <Controller
             control={form.control}
             name="country"
             render={({ field: { onChange, value } }: { field: ControllerFieldProps }) => (
               <TextInput
-                style={{
-                  borderWidth: 1,
-                  borderColor: '#D1D5DB',
-                  borderRadius: 8,
-                  paddingHorizontal: 12,
-                  paddingVertical: 12,
-                  fontSize: 16,
-                  backgroundColor: 'white'
-                }}
+                style={[
+                  styles.input,
+                  form.formState.errors.country && styles.inputError
+                ]}
                 placeholder="India"
                 value={value}
                 onChangeText={onChange}
@@ -1014,7 +888,7 @@ function IndividualProfileForm({
             )}
           />
           {form.formState.errors.country && (
-            <Text style={{ fontSize: 12, color: '#DC2626', marginTop: 4 }}>
+            <Text style={styles.errorText}>
               {form.formState.errors.country.message}
             </Text>
           )}
@@ -1022,29 +896,23 @@ function IndividualProfileForm({
       </View>
 
       {showCompanyFields && (
-        <View style={{ borderTopWidth: 1, borderTopColor: '#E5E7EB', paddingTop: 16, marginBottom: 16 }}>
-          <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 16, color: '#111827', marginBottom: 16 }}>
+        <View style={styles.companySection}>
+          <Text style={styles.companyTitle}>
             Company Information
           </Text>
 
-          <View style={{ marginBottom: 16 }}>
-            <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 14, color: '#374151', marginBottom: 8 }}>
-              Company Name *
-            </Text>
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Company Name *</Text>
             <Controller
               control={form.control}
               name="company"
               render={({ field: { onChange, value } }: { field: ControllerFieldProps }) => (
                 <TextInput
-                  style={{
-                    borderWidth: 1,
-                    borderColor: '#D1D5DB',
-                    borderRadius: 8,
-                    paddingHorizontal: 12,
-                    paddingVertical: 12,
-                    fontSize: 16,
-                    backgroundColor: user?.company ? '#F9FAFB' : 'white'
-                  }}
+                  style={[
+                    styles.input,
+                    form.formState.errors.company && styles.inputError,
+                    { backgroundColor: user?.company ? '#F9FAFB' : 'white' }
+                  ]}
                   placeholder="Company Name"
                   value={value}
                   onChangeText={onChange}
@@ -1053,35 +921,28 @@ function IndividualProfileForm({
               )}
             />
             {user?.company && (
-              <Text style={{ fontSize: 12, color: '#6B7280', marginTop: 4 }}>
+              <Text style={styles.helperText}>
                 Auto-filled from profile
               </Text>
             )}
             {form.formState.errors.company && (
-              <Text style={{ fontSize: 12, color: '#DC2626', marginTop: 4 }}>
+              <Text style={styles.errorText}>
                 {form.formState.errors.company.message}
               </Text>
             )}
           </View>
 
-          <View style={{ marginBottom: 16 }}>
-            <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 14, color: '#374151', marginBottom: 8 }}>
-              Industry *
-            </Text>
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Industry *</Text>
             <Controller
               control={form.control}
               name="industry"
               render={({ field: { onChange, value } }: { field: ControllerFieldProps }) => (
                 <TextInput
-                  style={{
-                    borderWidth: 1,
-                    borderColor: '#D1D5DB',
-                    borderRadius: 8,
-                    paddingHorizontal: 12,
-                    paddingVertical: 12,
-                    fontSize: 16,
-                    backgroundColor: 'white'
-                  }}
+                  style={[
+                    styles.input,
+                    form.formState.errors.industry && styles.inputError
+                  ]}
                   placeholder="Technology"
                   value={value}
                   onChangeText={onChange}
@@ -1089,7 +950,7 @@ function IndividualProfileForm({
               )}
             />
             {form.formState.errors.industry && (
-              <Text style={{ fontSize: 12, color: '#DC2626', marginTop: 4 }}>
+              <Text style={styles.errorText}>
                 {form.formState.errors.industry.message}
               </Text>
             )}
@@ -1098,51 +959,33 @@ function IndividualProfileForm({
       )}
 
       {/* Email Display (read-only) */}
-      <View style={{
-        backgroundColor: '#F9FAFB',
-        padding: 16,
-        borderRadius: 8,
-        marginBottom: 20
-      }}>
+      <View style={styles.emailContainer}>
         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-          <Text style={{ fontSize: 14, color: '#6B7280' }}>Email Address *</Text>
+          <Text style={styles.emailLabel}>Email Address *</Text>
         </View>
-        <Text style={{ fontSize: 16, color: '#111827', marginBottom: 4 }}>
+        <Text style={styles.emailText}>
           {user?.email}
         </Text>
-        <Text style={{ fontSize: 12, color: '#6B7280' }}>Email cannot be changed</Text>
+        <Text style={styles.emailNote}>Email cannot be changed</Text>
       </View>
 
       {/* Action Button */}
       <TouchableOpacity
-        style={{
-          backgroundColor: isSubmitting ? '#9CA3AF' : '#000000',
-          paddingVertical: 12,
-          borderRadius: 8,
-          alignItems: 'center',
-          flexDirection: 'row',
-          justifyContent: 'center'
-        }}
+        style={[
+          styles.primaryButton,
+          isSubmitting && styles.buttonDisabled
+        ]}
         onPress={form.handleSubmit(onSubmit)}
         disabled={isSubmitting}
       >
         {isSubmitting ? (
           <ActivityIndicator color="#fff" />
         ) : (
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 16, color: 'white', marginRight: 8 }}>
-              {(() => {
-                // If exhibitor on the individual tab, prompt to continue to company profile
-                if (user?.role === 'exhibitor' && activeTab === 'individual') {
-                  return 'Continue'
-                }
-                return 'Save Profile'
-              })()}
+          <View style={styles.buttonContent}>
+            <Text style={styles.primaryButtonText}>
+              {buttonProps.text}
             </Text>
-            {(() => {
-              const IconComponent = user?.role === 'exhibitor' && activeTab === 'individual' ? ArrowRight : Save
-              return <IconComponent size={20} color="#ffffff" />
-            })()}
+            <buttonProps.icon size={20} color="#ffffff" />
           </View>
         )}
       </TouchableOpacity>
@@ -1166,25 +1009,18 @@ function CompanyProfileForm({
 }) {
   return (
     <View>
-      <View style={{ flexDirection: 'column', gap: 16, marginBottom: 16 }}>
-        <View style={{ width: '100%' }}>
-          <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 14, color: '#374151', marginBottom: 8 }}>
-            Company Name *
-          </Text>
+      <View style={styles.inputRow}>
+        <View style={styles.inputFullWidth}>
+          <Text style={styles.label}>Company Name *</Text>
           <Controller
             control={form.control}
             name="name"
             render={({ field: { onChange, value } }: { field: ControllerFieldProps }) => (
               <TextInput
-                style={{
-                  borderWidth: 1,
-                  borderColor: '#D1D5DB',
-                  borderRadius: 8,
-                  paddingHorizontal: 12,
-                  paddingVertical: 12,
-                  fontSize: 16,
-                  backgroundColor: 'white'
-                }}
+                style={[
+                  styles.input,
+                  form.formState.errors.name && styles.inputError
+                ]}
                 placeholder="MedTech Innovations"
                 value={value}
                 onChangeText={onChange}
@@ -1192,32 +1028,25 @@ function CompanyProfileForm({
             )}
           />
           {form.formState.errors.name && (
-            <Text style={{ fontSize: 12, color: '#DC2626', marginTop: 4 }}>
+            <Text style={styles.errorText}>
               {form.formState.errors.name.message}
             </Text>
           )}
         </View>
       </View>
 
-      <View style={{ flexDirection: 'column', gap: 16, marginBottom: 16 }}>
-        <View style={{ width: '100%' }}>
-          <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 14, color: '#374151', marginBottom: 8 }}>
-            Contact Email *
-          </Text>
+      <View style={styles.inputRow}>
+        <View style={styles.inputFullWidth}>
+          <Text style={styles.label}>Contact Email *</Text>
           <Controller
             control={form.control}
             name="email"
             render={({ field: { onChange, value } }: { field: ControllerFieldProps }) => (
               <TextInput
-                style={{
-                  borderWidth: 1,
-                  borderColor: '#D1D5DB',
-                  borderRadius: 8,
-                  paddingHorizontal: 12,
-                  paddingVertical: 12,
-                  fontSize: 16,
-                  backgroundColor: 'white'
-                }}
+                style={[
+                  styles.input,
+                  form.formState.errors.email && styles.inputError
+                ]}
                 placeholder="info@medtech-innovations.com"
                 value={value}
                 onChangeText={onChange}
@@ -1227,32 +1056,25 @@ function CompanyProfileForm({
             )}
           />
           {form.formState.errors.email && (
-            <Text style={{ fontSize: 12, color: '#DC2626', marginTop: 4 }}>
+            <Text style={styles.errorText}>
               {form.formState.errors.email.message}
             </Text>
           )}
         </View>
       </View>
 
-      <View style={{ flexDirection: 'column', gap: 16, marginBottom: 16 }}>
-        <View style={{ width: '100%' }}>
-          <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 14, color: '#374151', marginBottom: 8 }}>
-            Contact Phone *
-          </Text>
+      <View style={styles.inputRow}>
+        <View style={styles.inputFullWidth}>
+          <Text style={styles.label}>Contact Phone *</Text>
           <Controller
             control={form.control}
             name="phone"
             render={({ field: { onChange, value } }: { field: ControllerFieldProps }) => (
               <TextInput
-                style={{
-                  borderWidth: 1,
-                  borderColor: '#D1D5DB',
-                  borderRadius: 8,
-                  paddingHorizontal: 12,
-                  paddingVertical: 12,
-                  fontSize: 16,
-                  backgroundColor: 'white'
-                }}
+                style={[
+                  styles.input,
+                  form.formState.errors.phone && styles.inputError
+                ]}
                 placeholder="+91 9876543210"
                 value={value}
                 onChangeText={onChange}
@@ -1261,32 +1083,25 @@ function CompanyProfileForm({
             )}
           />
           {form.formState.errors.phone && (
-            <Text style={{ fontSize: 12, color: '#DC2626', marginTop: 4 }}>
+            <Text style={styles.errorText}>
               {form.formState.errors.phone.message}
             </Text>
           )}
         </View>
       </View>
 
-      <View style={{ flexDirection: 'column', gap: 16, marginBottom: 16 }}>
-        <View style={{ width: '100%' }}>
-          <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 14, color: '#374151', marginBottom: 8 }}>
-            Website
-          </Text>
+      <View style={styles.inputRow}>
+        <View style={styles.inputFullWidth}>
+          <Text style={styles.label}>Website</Text>
           <Controller
             control={form.control}
             name="website"
             render={({ field: { onChange, value } }: { field: ControllerFieldProps }) => (
               <TextInput
-                style={{
-                  borderWidth: 1,
-                  borderColor: '#D1D5DB',
-                  borderRadius: 8,
-                  paddingHorizontal: 12,
-                  paddingVertical: 12,
-                  fontSize: 16,
-                  backgroundColor: 'white'
-                }}
+                style={[
+                  styles.input,
+                  form.formState.errors.website && styles.inputError
+                ]}
                 placeholder="medtech-innovations.com"
                 value={value}
                 onChangeText={onChange}
@@ -1295,32 +1110,25 @@ function CompanyProfileForm({
             )}
           />
           {form.formState.errors.website && (
-            <Text style={{ fontSize: 12, color: '#DC2626', marginTop: 4 }}>
+            <Text style={styles.errorText}>
               {form.formState.errors.website.message}
             </Text>
           )}
         </View>
       </View>
 
-      <View style={{ flexDirection: 'column', gap: 16, marginBottom: 16 }}>
-        <View style={{ width: '100%' }}>
-          <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 14, color: '#374151', marginBottom: 8 }}>
-            Booth Number
-          </Text>
+      <View style={styles.inputRow}>
+        <View style={styles.inputFullWidth}>
+          <Text style={styles.label}>Booth Number</Text>
           <Controller
             control={form.control}
             name="booth_number"
             render={({ field: { onChange, value } }: { field: ControllerFieldProps }) => (
               <TextInput
-                style={{
-                  borderWidth: 1,
-                  borderColor: '#D1D5DB',
-                  borderRadius: 8,
-                  paddingHorizontal: 12,
-                  paddingVertical: 12,
-                  fontSize: 16,
-                  backgroundColor: 'white'
-                }}
+                style={[
+                  styles.input,
+                  form.formState.errors.booth_number && styles.inputError
+                ]}
                 placeholder="B-205"
                 value={value}
                 onChangeText={onChange}
@@ -1328,32 +1136,25 @@ function CompanyProfileForm({
             )}
           />
           {form.formState.errors.booth_number && (
-            <Text style={{ fontSize: 12, color: '#DC2626', marginTop: 4 }}>
+            <Text style={styles.errorText}>
               {form.formState.errors.booth_number.message}
             </Text>
           )}
         </View>
       </View>
 
-      <View style={{ flexDirection: 'column', gap: 16, marginBottom: 16 }}>
-        <View style={{ width: '100%' }}>
-          <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 14, color: '#374151', marginBottom: 8 }}>
-            Hall
-          </Text>
+      <View style={styles.inputRow}>
+        <View style={styles.inputFullWidth}>
+          <Text style={styles.label}>Hall</Text>
           <Controller
             control={form.control}
             name="hall"
             render={({ field: { onChange, value } }: { field: ControllerFieldProps }) => (
               <TextInput
-                style={{
-                  borderWidth: 1,
-                  borderColor: '#D1D5DB',
-                  borderRadius: 8,
-                  paddingHorizontal: 12,
-                  paddingVertical: 12,
-                  fontSize: 16,
-                  backgroundColor: 'white'
-                }}
+                style={[
+                  styles.input,
+                  form.formState.errors.hall && styles.inputError
+                ]}
                 placeholder="Hall B"
                 value={value}
                 onChangeText={onChange}
@@ -1361,31 +1162,24 @@ function CompanyProfileForm({
             )}
           />
           {form.formState.errors.hall && (
-            <Text style={{ fontSize: 12, color: '#DC2626', marginTop: 4 }}>
+            <Text style={styles.errorText}>
               {form.formState.errors.hall.message}
             </Text>
           )}
         </View>
       </View>
 
-      <View style={{ marginBottom: 16 }}>
-        <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 14, color: '#374151', marginBottom: 8 }}>
-          Address
-        </Text>
+      <View style={styles.inputContainer}>
+        <Text style={styles.label}>Address</Text>
         <Controller
           control={form.control}
           name="address"
           render={({ field: { onChange, value } }: { field: ControllerFieldProps }) => (
             <TextInput
-              style={{
-                borderWidth: 1,
-                borderColor: '#D1D5DB',
-                borderRadius: 8,
-                paddingHorizontal: 12,
-                paddingVertical: 12,
-                fontSize: 16,
-                backgroundColor: 'white'
-              }}
+              style={[
+                styles.input,
+                form.formState.errors.address && styles.inputError
+              ]}
               placeholder="456 Innovation Blvd"
               value={value}
               onChangeText={onChange}
@@ -1393,31 +1187,24 @@ function CompanyProfileForm({
           )}
         />
         {form.formState.errors.address && (
-          <Text style={{ fontSize: 12, color: '#DC2626', marginTop: 4 }}>
+          <Text style={styles.errorText}>
             {form.formState.errors.address.message}
           </Text>
         )}
       </View>
 
-      <View style={{ flexDirection: 'column', gap: 16, marginBottom: 16 }}>
-        <View style={{ width: '100%' }}>
-          <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 14, color: '#374151', marginBottom: 8 }}>
-            City *
-          </Text>
+      <View style={styles.inputRow}>
+        <View style={styles.inputFullWidth}>
+          <Text style={styles.label}>City *</Text>
           <Controller
             control={form.control}
             name="city"
             render={({ field: { onChange, value } }: { field: ControllerFieldProps }) => (
               <TextInput
-                style={{
-                  borderWidth: 1,
-                  borderColor: '#D1D5DB',
-                  borderRadius: 8,
-                  paddingHorizontal: 12,
-                  paddingVertical: 12,
-                  fontSize: 16,
-                  backgroundColor: 'white'
-                }}
+                style={[
+                  styles.input,
+                  form.formState.errors.city && styles.inputError
+                ]}
                 placeholder="Boston"
                 value={value}
                 onChangeText={onChange}
@@ -1425,32 +1212,25 @@ function CompanyProfileForm({
             )}
           />
           {form.formState.errors.city && (
-            <Text style={{ fontSize: 12, color: '#DC2626', marginTop: 4 }}>
+            <Text style={styles.errorText}>
               {form.formState.errors.city.message}
             </Text>
           )}
         </View>
       </View>
 
-      <View style={{ flexDirection: 'column', gap: 16, marginBottom: 16 }}>
-        <View style={{ width: '100%' }}>
-          <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 14, color: '#374151', marginBottom: 8 }}>
-            Country *
-          </Text>
+      <View style={styles.inputRow}>
+        <View style={styles.inputFullWidth}>
+          <Text style={styles.label}>Country *</Text>
           <Controller
             control={form.control}
             name="country"
             render={({ field: { onChange, value } }: { field: ControllerFieldProps }) => (
               <TextInput
-                style={{
-                  borderWidth: 1,
-                  borderColor: '#D1D5DB',
-                  borderRadius: 8,
-                  paddingHorizontal: 12,
-                  paddingVertical: 12,
-                  fontSize: 16,
-                  backgroundColor: 'white'
-                }}
+                style={[
+                  styles.input,
+                  form.formState.errors.country && styles.inputError
+                ]}
                 placeholder="USA"
                 value={value}
                 onChangeText={onChange}
@@ -1458,33 +1238,25 @@ function CompanyProfileForm({
             )}
           />
           {form.formState.errors.country && (
-            <Text style={{ fontSize: 12, color: '#DC2626', marginTop: 4 }}>
+            <Text style={styles.errorText}>
               {form.formState.errors.country.message}
             </Text>
           )}
         </View>
       </View>
 
-      <View style={{ marginBottom: 20 }}>
-        <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 14, color: '#374151', marginBottom: 8 }}>
-          About Company
-        </Text>
+      <View style={styles.inputContainer}>
+        <Text style={styles.label}>About Company</Text>
         <Controller
           control={form.control}
           name="about"
           render={({ field: { onChange, value } }: { field: ControllerFieldProps }) => (
             <TextInput
-              style={{
-                borderWidth: 1,
-                borderColor: '#D1D5DB',
-                borderRadius: 8,
-                paddingHorizontal: 12,
-                paddingVertical: 12,
-                fontSize: 16,
-                backgroundColor: 'white',
-                height: 80,
-                textAlignVertical: 'top'
-              }}
+              style={[
+                styles.input,
+                form.formState.errors.about && styles.inputError,
+                { height: 80, textAlignVertical: 'top' }
+              ]}
               placeholder="About your company"
               value={value}
               onChangeText={onChange}
@@ -1494,7 +1266,7 @@ function CompanyProfileForm({
           )}
         />
         {form.formState.errors.about && (
-          <Text style={{ fontSize: 12, color: '#DC2626', marginTop: 4 }}>
+          <Text style={styles.errorText}>
             {form.formState.errors.about.message}
           </Text>
         )}
@@ -1502,23 +1274,19 @@ function CompanyProfileForm({
 
       {/* Action Button */}
       <TouchableOpacity
-        style={{
-          backgroundColor: isSubmitting ? '#9CA3AF' : '#000000',
-          paddingVertical: 12,
-          borderRadius: 8,
-          alignItems: 'center',
-          flexDirection: 'row',
-          justifyContent: 'center'
-        }}
+        style={[
+          styles.primaryButton,
+          isSubmitting && styles.buttonDisabled
+        ]}
         onPress={form.handleSubmit(onSubmit)}
         disabled={isSubmitting}
       >
         {isSubmitting ? (
           <ActivityIndicator color="#fff" />
         ) : (
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 16, color: 'white', marginRight: 8 }}>
-              Save Profiles
+          <View style={styles.buttonContent}>
+            <Text style={styles.primaryButtonText}>
+              Save Profile
             </Text>
             <Save size={20} color="#ffffff" />
           </View>

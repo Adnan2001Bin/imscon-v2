@@ -233,72 +233,107 @@ export default function LoginScreen({ onLoginSuccess }: Props) {
           keyboardDismissMode="interactive"
         >
           <View style={loginScreenStyles.content}>
-            {/* Logo */}
-            <View style={loginScreenStyles.logoPlaceholder}>
-              <Image
-                source={require('../../../assets/images/logo-hi_res.png')}
-                style={loginScreenStyles.logoImage}
-                resizeMode="contain"
-              />
+            {/* Header Section */}
+            <View style={loginScreenStyles.header}>
+              <View style={loginScreenStyles.logoContainer}>
+                <Image
+                  source={require('../../../assets/images/lub-karnataka.png')}
+                  style={loginScreenStyles.logoImage}
+                  resizeMode="contain"
+                />
+              </View>
+              
+              <View style={loginScreenStyles.welcomeSection}>
+                <Text style={[loginScreenStyles.title, { fontFamily: 'Inter_700Bold' }]}>
+                  Welcome to LUB Connect
+                </Text>
+                <Text style={[loginScreenStyles.subtitle, { fontFamily: 'Inter_400Regular' }]}>
+                  India's Manufacturing Future Begins Here
+                </Text>
+              </View>
             </View>
 
-            <Text style={[loginScreenStyles.title, { fontFamily: 'Inter_700Bold' }]}>
-              Welcome to LUB Connect
-            </Text>
-            <Text style={[loginScreenStyles.subtitle, { fontFamily: 'Inter_400Regular' }]}>
-              India&apos;s Manufacturing Future Begins Here
-            </Text>
-
-            <View style={loginScreenStyles.formContainer}>
-              <View style={loginScreenStyles.formHeader}>
-                <Text style={[loginScreenStyles.formTitle, { fontFamily: 'Inter_700Bold' }]}>
-                  {isRegisterMode ? 'Register' : 'Login'}
-                </Text>
-                <Text style={[loginScreenStyles.formSubtitle, { fontFamily: 'Inter_400Regular' }]}>
-                  {isRegisterMode
-                    ? 'Create an account to continue'
-                    : 'Welcome back to LUB Connect, Please login to continue'
-                  }
-                </Text>
+            {/* Form Card */}
+            <View style={loginScreenStyles.formCard}>
+              {/* Form Header with Tabs */}
+              <View style={loginScreenStyles.tabContainer}>
+                <TouchableOpacity 
+                  style={[
+                    loginScreenStyles.tab, 
+                    !isRegisterMode && loginScreenStyles.activeTab
+                  ]}
+                  onPress={() => setIsRegisterMode(false)}
+                >
+                  <Text style={[
+                    loginScreenStyles.tabText,
+                    !isRegisterMode && loginScreenStyles.activeTabText
+                  ]}>
+                    Sign In
+                  </Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={[
+                    loginScreenStyles.tab, 
+                    isRegisterMode && loginScreenStyles.activeTab
+                  ]}
+                  onPress={() => setIsRegisterMode(true)}
+                >
+                  <Text style={[
+                    loginScreenStyles.tabText,
+                    isRegisterMode && loginScreenStyles.activeTabText
+                  ]}>
+                    Join Now
+                  </Text>
+                </TouchableOpacity>
               </View>
 
               <View style={loginScreenStyles.formContent}>
                 {!otpSentTo ? (
                   <>
                     {success && (
-                      <Text style={loginScreenStyles.successText}>{success}</Text>
+                      <View style={loginScreenStyles.successContainer}>
+                        <Text style={loginScreenStyles.successText}>{success}</Text>
+                      </View>
                     )}
 
-                    <Text style={loginScreenStyles.label}>Email</Text>
-                    <Controller
-                      control={control}
-                      name="email"
-                      rules={{
-                        required: 'Email is required',
-                        pattern: {
-                          value: /\S+@\S+\.\S+/,
-                          message: 'Enter a valid email'
-                        }
-                      }}
-                      render={({ field }: { field: any }) => (
-                        <TextInput
-                          onBlur={field.onBlur}
-                          onChangeText={field.onChange}
-                          value={field.value}
-                          style={loginScreenStyles.input}
-                          placeholder="you@example.com"
-                          keyboardType="email-address"
-                          autoCapitalize="none"
-                        />
+                    <View style={loginScreenStyles.inputContainer}>
+                      <Text style={loginScreenStyles.label}>Email address</Text>
+                      <Controller
+                        control={control}
+                        name="email"
+                        rules={{
+                          required: 'Email is required',
+                          pattern: {
+                            value: /\S+@\S+\.\S+/,
+                            message: 'Enter a valid email address'
+                          }
+                        }}
+                        render={({ field }: { field: any }) => (
+                          <TextInput
+                            onBlur={field.onBlur}
+                            onChangeText={field.onChange}
+                            value={field.value}
+                            style={[
+                              loginScreenStyles.input,
+                              errors.email && loginScreenStyles.inputError
+                            ]}
+                            placeholder="Enter your email"
+                            placeholderTextColor="#9ca3af"
+                            keyboardType="email-address"
+                            autoCapitalize="none"
+                            autoComplete="email"
+                          />
+                        )}
+                      />
+                      {errors.email && (
+                        <Text style={loginScreenStyles.errorText}>{errors.email.message}</Text>
                       )}
-                    />
-                    {errors.email && (
-                      <Text style={loginScreenStyles.errorText}>{errors.email.message}</Text>
-                    )}
+                    </View>
 
                     <TouchableOpacity
                       style={[
-                        loginScreenStyles.button,
+                        loginScreenStyles.primaryButton,
                         isRegisterMode && loginScreenStyles.registerButton,
                         isSubmitting && loginScreenStyles.buttonDisabled
                       ]}
@@ -306,26 +341,34 @@ export default function LoginScreen({ onLoginSuccess }: Props) {
                       disabled={isSubmitting}
                     >
                       {isSubmitting ? (
-                        <ActivityIndicator color="#fff" />
+                        <ActivityIndicator color="#ffffff" size="small" />
                       ) : (
-                        <Text style={[loginScreenStyles.buttonText, { fontFamily: 'Inter_500Medium' }]}>
+                        <Text style={[loginScreenStyles.primaryButtonText, { fontFamily: 'Inter_600SemiBold' }]}>
                           {isRegisterMode ? 'Register' : 'Send OTP'}
                         </Text>
                       )}
                     </TouchableOpacity>
 
+                    <View style={loginScreenStyles.divider}>
+                      <View style={loginScreenStyles.dividerLine} />
+                      <Text style={loginScreenStyles.dividerText}>or</Text>
+                      <View style={loginScreenStyles.dividerLine} />
+                    </View>
+
                     <TouchableOpacity
                       onPress={() => setIsRegisterMode((s) => !s)}
-                      style={loginScreenStyles.switchModeButton}
+                      style={loginScreenStyles.secondaryButton}
                     >
-                      <Text style={loginScreenStyles.switchModeText}>
-                        {isRegisterMode ? (
-                          'Already have an account? '
-                        ) : (
-                          "Don't have an account? "
-                        )}
-                        <Text style={loginScreenStyles.switchModeLink}>
-                          {isRegisterMode ? 'Login' : 'Register'}
+                      <Text style={loginScreenStyles.secondaryButtonText}>
+                        {isRegisterMode
+                          ? 'Already have an account? '
+                          : "Don't have an account? "
+                        }
+                        <Text style={loginScreenStyles.secondaryButtonTextBold}>
+                          {isRegisterMode
+                            ? 'Sign in'
+                            : 'Join now'
+                          }
                         </Text>
                       </Text>
                     </TouchableOpacity>
@@ -333,55 +376,83 @@ export default function LoginScreen({ onLoginSuccess }: Props) {
                 ) : (
                   <>
                     {success && (
-                      <Text style={loginScreenStyles.successText}>{success}</Text>
+                      <View style={loginScreenStyles.successContainer}>
+                        <Text style={loginScreenStyles.successText}>{success}</Text>
+                      </View>
                     )}
-                    <Text style={loginScreenStyles.label}>
-                      Enter OTP sent to{' '}
-                      <Text style={loginScreenStyles.emailHighlight}>{otpSentTo}</Text>
-                    </Text>
+                    
+                    <View style={loginScreenStyles.otpHeader}>
+                      <Text style={loginScreenStyles.otpTitle}>Enter verification code</Text>
+                      <Text style={loginScreenStyles.otpSubtitle}>
+                        We sent a code to {' '}
+                        <Text style={loginScreenStyles.emailHighlight}>{otpSentTo}</Text>
+                      </Text>
+                    </View>
 
-                    <Controller
-                      control={control}
-                      name="otp"
-                      rules={{
-                        required: 'OTP is required',
-                        minLength: {
-                          value: 5,
-                          message: 'OTP must be 5 digits'
-                        }
-                      }}
-                      render={({ field }: { field: any }) => (
-                        <TextInput
-                          onBlur={field.onBlur}
-                          onChangeText={field.onChange}
-                          value={field.value}
-                          style={loginScreenStyles.input}
-                          placeholder="00000"
-                          keyboardType="numeric"
-                          maxLength={6}
-                        />
+                    <View style={loginScreenStyles.inputContainer}>
+                      <Text style={loginScreenStyles.label}>Verification code</Text>
+                      <Controller
+                        control={control}
+                        name="otp"
+                        rules={{
+                          required: 'Verification code is required',
+                          minLength: {
+                            value: 5,
+                            message: 'Code must be 5 digits'
+                          }
+                        }}
+                        render={({ field }: { field: any }) => (
+                          <TextInput
+                            onBlur={field.onBlur}
+                            onChangeText={field.onChange}
+                            value={field.value}
+                            style={[
+                              loginScreenStyles.input,
+                              errors.otp && loginScreenStyles.inputError
+                            ]}
+                            placeholder="Enter 5-digit code"
+                            placeholderTextColor="#9ca3af"
+                            keyboardType="numeric"
+                            maxLength={6}
+                            autoComplete="one-time-code"
+                          />
+                        )}
+                      />
+                      {errors.otp && (
+                        <Text style={loginScreenStyles.errorText}>{errors.otp.message}</Text>
                       )}
-                    />
-                    {errors.otp && (
-                      <Text style={loginScreenStyles.errorText}>{errors.otp.message}</Text>
-                    )}
+                    </View>
 
                     <TouchableOpacity
-                      style={[loginScreenStyles.button, isVerifying && loginScreenStyles.buttonDisabled]}
+                      style={[
+                        loginScreenStyles.primaryButton,
+                        isVerifying && loginScreenStyles.buttonDisabled
+                      ]}
                       onPress={handleSubmit(onVerify)}
                       disabled={isVerifying}
                     >
                       {isVerifying ? (
-                        <ActivityIndicator color="#fff" />
+                        <ActivityIndicator color="#ffffff" size="small" />
                       ) : (
-                        <Text style={[loginScreenStyles.buttonText, { fontFamily: 'Inter_500Medium' }]}>
-                          Verify OTP
+                        <Text style={[loginScreenStyles.primaryButtonText, { fontFamily: 'Inter_600SemiBold' }]}>
+                          Verify and Continue
                         </Text>
                       )}
                     </TouchableOpacity>
+
                   </>
                 )}
               </View>
+            </View>
+
+            {/* Footer */}
+            <View style={loginScreenStyles.footer}>
+              <Text style={loginScreenStyles.footerText}>
+                By continuing, you agree to our{' '}
+                <Text style={loginScreenStyles.footerLink}>Terms of Service</Text>{' '}
+                and acknowledge our{' '}
+                <Text style={loginScreenStyles.footerLink}>Privacy Policy</Text>.
+              </Text>
             </View>
           </View>
         </ScrollView>
@@ -402,4 +473,3 @@ export default function LoginScreen({ onLoginSuccess }: Props) {
     </KeyboardAvoidingView>
   );
 }
-

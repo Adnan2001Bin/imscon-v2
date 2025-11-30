@@ -97,7 +97,7 @@ export default function MobileHeader({
       ]}
     >
       <Image
-        source={require('../../assets/images/logo-hi_res.png')}
+        source={require('../../assets/images/lub-karnataka.png')}
         style={styles.logo}
         resizeMode='contain'
       />
@@ -143,6 +143,7 @@ export default function MobileHeader({
 const styles = StyleSheet.create({
   container: {
     width: '100%',
+    marginTop: 15,
     paddingVertical: 8, // py-2
     flexDirection: 'row',
     alignItems: 'center',
@@ -157,8 +158,8 @@ const styles = StyleSheet.create({
     borderBottomColor: '#e5e7eb', // border-gray-200
   },
   logo: {
-    width: 140,
-    height: 48,
+    width: 100,
+    height: 70,
   },
   compactModeContainer: {
     flexDirection: 'row',
