@@ -473,3 +473,4 @@ export default function LoginScreen({ onLoginSuccess }: Props) {
     </KeyboardAvoidingView>
   );
 }
+

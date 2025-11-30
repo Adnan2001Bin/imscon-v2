@@ -262,7 +262,7 @@ export const completeProfileScreenStyles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  // Success States
+ 
   successContainer: {
     backgroundColor: '#f0fdf4',
     borderWidth: 1,
@@ -278,7 +278,7 @@ export const completeProfileScreenStyles = StyleSheet.create({
     fontFamily: 'Inter_500Medium',
   },
 
-  // Helper Text
+
   helperText: {
     fontSize: 12,
     color: '#6B7280',
