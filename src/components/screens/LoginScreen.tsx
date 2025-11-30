@@ -5,7 +5,6 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
-  Dimensions,
   Easing,
   Image,
   KeyboardAvoidingView,
@@ -55,44 +54,30 @@ export default function LoginScreen({ onLoginSuccess }: Props) {
 
   // Toggle between login and register with animation
   const toggleMode = () => {
-    const screenWidth = Dimensions.get('window').width;
-    const isGoingToRegister = !isRegisterMode; // If currently in login mode, going to register
+    // flip mode
+    setIsRegisterMode((prev) => !prev);
 
-    // Slide out current content with fade
+    // start from slightly lower + transparent
+    slideAnim.setValue(16);      // a bit more offset
+    opacityAnim.setValue(0);
+
     Animated.parallel([
       Animated.timing(slideAnim, {
-        toValue: isGoingToRegister ? -screenWidth : screenWidth, // Slide left for register, right for login
-        duration: 200,
-        easing: Easing.inOut(Easing.ease),
+        toValue: 0,
+        duration: 1400, // ⬅️ slower
+        easing: Easing.out(Easing.cubic), // ⬅️ smoother curve
         useNativeDriver: true,
       }),
       Animated.timing(opacityAnim, {
-        toValue: 0.5,
-        duration: 150,
+        toValue: 1,
+        duration: 1400, // ⬅️ match duration
+        easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
-      })
-    ]).start(() => {
-      // Toggle mode
-      setIsRegisterMode(!isRegisterMode);
-
-      // Reset position and slide in new content
-      slideAnim.setValue(isGoingToRegister ? screenWidth : -screenWidth); // Start from opposite side
-
-      Animated.parallel([
-        Animated.timing(slideAnim, {
-          toValue: 0, // Slide to center
-          duration: 250,
-          easing: Easing.out(Easing.ease),
-          useNativeDriver: true,
-        }),
-        Animated.timing(opacityAnim, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: true,
-        })
-      ]).start();
-    });
+      }),
+    ]).start();
   };
+
+
 
   // Authentication functions
   const onSendOtp = async (data: FormValues) => {
@@ -269,9 +254,9 @@ export default function LoginScreen({ onLoginSuccess }: Props) {
   // Render
   return (
     <KeyboardAvoidingView
-    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-  keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
-  style={loginScreenStyles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
+      style={loginScreenStyles.container}
     >
       <LinearGradient colors={["#fef2f2", "#fee2e2"]} style={loginScreenStyles.gradient}>
         <ScrollView
@@ -290,7 +275,7 @@ export default function LoginScreen({ onLoginSuccess }: Props) {
                   resizeMode="contain"
                 />
               </View>
-              
+
               <View style={loginScreenStyles.welcomeSection}>
                 <Text style={[loginScreenStyles.title, { fontFamily: 'Inter_700Bold' }]}>
                   Welcome to LUB Connect
@@ -307,8 +292,8 @@ export default function LoginScreen({ onLoginSuccess }: Props) {
                 loginScreenStyles.formCard,
                 {
                   opacity: opacityAnim,
-                  transform: [{ translateX: slideAnim }]
-                }
+                  transform: [{ translateY: slideAnim }],
+                },
               ]}
             >
               {/* Form Header with Mode Toggle */}
@@ -317,7 +302,7 @@ export default function LoginScreen({ onLoginSuccess }: Props) {
                   {isRegisterMode ? 'Create Account' : 'Welcome Back'}
                 </Text>
                 <Text style={loginScreenStyles.modeToggleText}>
-                  {isRegisterMode ?  "Don't have an account? Create one to get started." :'Welcome back to LUB Connect'}
+                  {isRegisterMode ? "Don't have an account? Create one to get started." : 'Welcome back to LUB Connect'}
                 </Text>
               </View>
 
@@ -413,7 +398,7 @@ export default function LoginScreen({ onLoginSuccess }: Props) {
                         <Text style={loginScreenStyles.successText}>{success}</Text>
                       </View>
                     )}
-                    
+
                     <View style={loginScreenStyles.otpHeader}>
                       <Text style={loginScreenStyles.otpTitle}>Enter verification code</Text>
                       <Text style={loginScreenStyles.otpSubtitle}>
