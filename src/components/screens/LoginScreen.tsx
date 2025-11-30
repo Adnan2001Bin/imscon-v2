@@ -4,6 +4,9 @@ import { Controller, useForm } from 'react-hook-form';
 import {
   ActivityIndicator,
   Alert,
+  Animated,
+  Dimensions,
+  Easing,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -42,9 +45,54 @@ export default function LoginScreen({ onLoginSuccess }: Props) {
   const [success, setSuccess] = useState<string | null>(null);
   const [isRegisterMode, setIsRegisterMode] = useState(false);
 
+  // Animation values
+  const [slideAnim] = useState(new Animated.Value(0));
+  const [opacityAnim] = useState(new Animated.Value(1));
+
   // Dialog state
   const [showRegistrationDialog, setShowRegistrationDialog] = useState(false);
   const [pendingRegistrationEmail, setPendingRegistrationEmail] = useState<string>('');
+
+  // Toggle between login and register with animation
+  const toggleMode = () => {
+    const screenWidth = Dimensions.get('window').width;
+    const isGoingToRegister = !isRegisterMode; // If currently in login mode, going to register
+
+    // Slide out current content with fade
+    Animated.parallel([
+      Animated.timing(slideAnim, {
+        toValue: isGoingToRegister ? -screenWidth : screenWidth, // Slide left for register, right for login
+        duration: 200,
+        easing: Easing.inOut(Easing.ease),
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacityAnim, {
+        toValue: 0.5,
+        duration: 150,
+        useNativeDriver: true,
+      })
+    ]).start(() => {
+      // Toggle mode
+      setIsRegisterMode(!isRegisterMode);
+
+      // Reset position and slide in new content
+      slideAnim.setValue(isGoingToRegister ? screenWidth : -screenWidth); // Start from opposite side
+
+      Animated.parallel([
+        Animated.timing(slideAnim, {
+          toValue: 0, // Slide to center
+          duration: 250,
+          easing: Easing.out(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        })
+      ]).start();
+    });
+  };
 
   // Authentication functions
   const onSendOtp = async (data: FormValues) => {
@@ -221,8 +269,8 @@ export default function LoginScreen({ onLoginSuccess }: Props) {
   // Render
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 24}
+      behavior="padding"
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 80}
       style={loginScreenStyles.container}
     >
       <LinearGradient colors={["#fef2f2", "#fee2e2"]} style={loginScreenStyles.gradient}>
@@ -254,38 +302,23 @@ export default function LoginScreen({ onLoginSuccess }: Props) {
             </View>
 
             {/* Form Card */}
-            <View style={loginScreenStyles.formCard}>
-              {/* Form Header with Tabs */}
-              <View style={loginScreenStyles.tabContainer}>
-                <TouchableOpacity 
-                  style={[
-                    loginScreenStyles.tab, 
-                    !isRegisterMode && loginScreenStyles.activeTab
-                  ]}
-                  onPress={() => setIsRegisterMode(false)}
-                >
-                  <Text style={[
-                    loginScreenStyles.tabText,
-                    !isRegisterMode && loginScreenStyles.activeTabText
-                  ]}>
-                    Sign In
-                  </Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity 
-                  style={[
-                    loginScreenStyles.tab, 
-                    isRegisterMode && loginScreenStyles.activeTab
-                  ]}
-                  onPress={() => setIsRegisterMode(true)}
-                >
-                  <Text style={[
-                    loginScreenStyles.tabText,
-                    isRegisterMode && loginScreenStyles.activeTabText
-                  ]}>
-                    Join Now
-                  </Text>
-                </TouchableOpacity>
+            <Animated.View
+              style={[
+                loginScreenStyles.formCard,
+                {
+                  opacity: opacityAnim,
+                  transform: [{ translateX: slideAnim }]
+                }
+              ]}
+            >
+              {/* Form Header with Mode Toggle */}
+              <View style={loginScreenStyles.modeToggleContainer}>
+                <Text style={loginScreenStyles.modeTitle}>
+                  {isRegisterMode ? 'Create Account' : 'Welcome Back'}
+                </Text>
+                <Text style={loginScreenStyles.modeToggleText}>
+                  {isRegisterMode ?  "Don't have an account? Create one to get started." :'Welcome back to LUB Connect'}
+                </Text>
               </View>
 
               <View style={loginScreenStyles.formContent}>
@@ -344,7 +377,7 @@ export default function LoginScreen({ onLoginSuccess }: Props) {
                         <ActivityIndicator color="#ffffff" size="small" />
                       ) : (
                         <Text style={[loginScreenStyles.primaryButtonText, { fontFamily: 'Inter_600SemiBold' }]}>
-                          {isRegisterMode ? 'Register' : 'Send OTP'}
+                          {isRegisterMode ? 'Create Account' : 'Send OTP'}
                         </Text>
                       )}
                     </TouchableOpacity>
@@ -356,7 +389,7 @@ export default function LoginScreen({ onLoginSuccess }: Props) {
                     </View>
 
                     <TouchableOpacity
-                      onPress={() => setIsRegisterMode((s) => !s)}
+                      onPress={toggleMode}
                       style={loginScreenStyles.secondaryButton}
                     >
                       <Text style={loginScreenStyles.secondaryButtonText}>
@@ -443,7 +476,7 @@ export default function LoginScreen({ onLoginSuccess }: Props) {
                   </>
                 )}
               </View>
-            </View>
+            </Animated.View>
 
             {/* Footer */}
             <View style={loginScreenStyles.footer}>
@@ -473,4 +506,3 @@ export default function LoginScreen({ onLoginSuccess }: Props) {
     </KeyboardAvoidingView>
   );
 }
-
