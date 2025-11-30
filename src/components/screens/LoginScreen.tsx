@@ -269,9 +269,9 @@ export default function LoginScreen({ onLoginSuccess }: Props) {
   // Render
   return (
     <KeyboardAvoidingView
-      behavior="padding"
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 80}
-      style={loginScreenStyles.container}
+    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+  keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
+  style={loginScreenStyles.container}
     >
       <LinearGradient colors={["#fef2f2", "#fee2e2"]} style={loginScreenStyles.gradient}>
         <ScrollView
