@@ -34,14 +34,14 @@ export default function RegistrationDialog({
               style={[loginScreenStyles.dialogButton, loginScreenStyles.dialogCancelButton]}
               onPress={onCancel}
             >
-              <Text style={loginScreenStyles.dialogCancelText}>CANCEL</Text>
+              <Text style={loginScreenStyles.dialogCancelText}>Cancel</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={[loginScreenStyles.dialogButton, loginScreenStyles.dialogSignUpButton]}
               onPress={onSignUp}
             >
-              <Text style={loginScreenStyles.dialogSignUpText}>SIGN UP</Text>
+              <Text style={loginScreenStyles.dialogSignUpText}>signup</Text>
             </TouchableOpacity>
           </View>
         </View>

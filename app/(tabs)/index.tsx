@@ -1,6 +1,7 @@
 import CompleteProfileScreen from '@/src/components/screens/CompleteProfileScreen';
 import LoginScreen from '@/src/components/screens/LoginScreen';
 import MobileBottomNavigation from '@/src/components/MobileBottomNavigation';
+import PostsFeed from '@/src/components/ui/PostsFeed';
 import { useAuth } from '@/src/hooks/useAuth';
 import { supabase } from '@/src/lib/supabase';
 import React, { useEffect, useState } from 'react';
@@ -158,25 +159,20 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.mainContent}>
-        <View style={styles.welcomeContainer}>
-          <View style={styles.welcomeCard}>
-            <Text style={styles.text}>
-              Welcome to LUB Connect!
-            </Text>
-            <Text style={styles.subtext}>
-              You are now logged in.
-            </Text>
-
-            <TouchableOpacity
-              style={styles.logoutButton}
-              onPress={handleLogout}
-            >
-              <Text style={styles.logoutButtonText}>Logout</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Feed</Text>
+        <TouchableOpacity
+          style={styles.logoutButton}
+          onPress={handleLogout}
+        >
+          <Text style={styles.logoutButtonText}>Logout</Text>
+        </TouchableOpacity>
       </View>
+
+      <View style={styles.feedContainer}>
+        <PostsFeed />
+      </View>
+
       <MobileBottomNavigation />
     </View>
   );
@@ -187,53 +183,36 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fef2f2',
   },
-  mainContent: {
-    flex: 1,
-  },
-  welcomeContainer: {
-    flex: 1,
-    justifyContent: 'center',
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-  },
-  welcomeCard: {
+    paddingVertical: 12,
+    paddingTop: 50, // Account for status bar
     backgroundColor: '#ffffff',
-    padding: 24,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
   },
-  text: {
+  headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
     color: '#11181C',
-    marginBottom: 8,
-    textAlign: 'center',
   },
-  subtext: {
-    fontSize: 16,
-    color: '#6B7280',
-    textAlign: 'center',
+  feedContainer: {
+    flex: 1,
+    backgroundColor: '#f9fafb',
   },
   logoutButton: {
-    marginTop: 24,
     backgroundColor: '#DC2626',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 6,
     alignItems: 'center',
-    minWidth: 120,
   },
   logoutButtonText: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '500',
   },
   loadingContainer: {

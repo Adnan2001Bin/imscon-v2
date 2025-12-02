@@ -254,4 +254,68 @@ export const loginScreenStyles = StyleSheet.create({
     textDecorationLine: 'underline',
     fontFamily: 'Inter_500Medium',
   },
+
+  // Dialog Styles
+  dialogOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  dialogContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 24,
+    marginHorizontal: 32,
+    width: '80%',
+    maxWidth: 320,
+    alignItems: 'center',
+  },
+  dialogTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#11181C',
+    marginBottom: 8,
+    textAlign: 'center',
+    fontFamily: 'Inter_600SemiBold',
+  },
+  dialogMessage: {
+    fontSize: 16,
+    color: '#6B7280',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 22,
+    fontFamily: 'Inter_400Regular',
+  },
+  dialogButtonsContainer: {
+    flexDirection: 'row',
+    width: '100%',
+    justifyContent: 'space-between',
+  },
+  dialogButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 6,
+  },
+  dialogCancelButton: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+  },
+  dialogSignUpButton: {
+    backgroundColor: '#000000',
+  },
+  dialogCancelText: {
+    color: '#374151',
+    fontSize: 16,
+    fontFamily: 'Inter_600SemiBold',
+  },
+  dialogSignUpText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontFamily: 'Inter_600SemiBold',
+  },
 });

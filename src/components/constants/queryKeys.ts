@@ -42,6 +42,12 @@ export const k = {
       root: () => ['notification'] as const,
       list: () => [...k.notification.root(), 'list'] as const,
     },
+
+    post: {
+      root: () => ['post'] as const,
+      list: () => [...k.post.root(), 'list'] as const,
+      feed: () => [...k.post.root(), 'feed'] as const,
+    },
   } as const
   
   const queryKeys = k
