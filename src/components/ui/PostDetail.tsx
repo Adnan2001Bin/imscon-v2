@@ -1,4 +1,4 @@
-import type { PostWithUser, Comment } from '@/src/types/post';
+import type { Comment, PostWithUser } from '@/src/types/post';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -7,14 +7,14 @@ import {
   Dimensions,
   Image,
   Linking,
+  RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
-  ScrollView,
-  RefreshControl,
 } from 'react-native';
-import { getPostLikeStatus, togglePostLike, getPostComments } from '../services/post';
+import { getPostComments, getPostLikeStatus, togglePostLike } from '../services/post';
 import CommentSection from './CommentSection';
 
 const { width } = Dimensions.get('window');
