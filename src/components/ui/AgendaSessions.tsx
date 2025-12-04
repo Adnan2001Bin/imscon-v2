@@ -2,6 +2,7 @@ import type { AgendaSession } from '@/src/types/event';
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import AgendaSessionSkeleton from './AgendaSessionSkeleton';
 
 interface AgendaSessionsProps {
   sessions: AgendaSession[];
@@ -66,8 +67,13 @@ export default function AgendaSessions({ sessions, isLoading, onSessionPress }: 
 
   if (isLoading) {
     return (
-      <View style={styles.loadingContainer}>
-        <Text style={styles.loadingText}>Loading agenda sessions...</Text>
+      <View style={styles.container}>
+        <Text style={styles.title}>Agenda</Text>
+        <View style={styles.loadingContainer}>
+          {Array.from({ length: 3 }, (_, index) => (
+            <AgendaSessionSkeleton key={index} />
+          ))}
+        </View>
       </View>
     );
   }
@@ -103,13 +109,6 @@ export default function AgendaSessions({ sessions, isLoading, onSessionPress }: 
                 onPress={() => onSessionPress?.(session)}
                 activeOpacity={0.7}
               >
-                {/* Time */}
-                <View style={styles.timeContainer}>
-                  <Text style={styles.startTime}>{formatTime(session.start_time)}</Text>
-                  <Text style={styles.endTime}>{formatTime(session.end_time)}</Text>
-                  <View style={styles.timeLine} />
-                </View>
-
                 {/* Content */}
                 <View style={styles.sessionContent}>
                   <View style={styles.sessionHeader}>
@@ -141,6 +140,13 @@ export default function AgendaSessions({ sessions, isLoading, onSessionPress }: 
                     <View style={styles.stageContainer}>
                       <Ionicons name="location" size={14} color="#666" />
                       <Text style={styles.stageText}>{session.stage}</Text>
+                    </View>
+
+                    <View style={styles.timeContainer}>
+                      <Ionicons name="time" size={14} color="#666" />
+                      <Text style={styles.timeText}>
+                        {formatTime(session.start_time)} - {formatTime(session.end_time)}
+                      </Text>
                     </View>
                   </View>
 
@@ -221,7 +227,7 @@ const styles = StyleSheet.create({
   dateHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 5,
     paddingBottom: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
@@ -232,43 +238,25 @@ const styles = StyleSheet.create({
     color: '#374151',
     marginLeft: 8,
   },
-  sessionsList: {
-    paddingLeft: 20,
-  },
+ 
+
   sessionCard: {
     flexDirection: 'row',
     marginBottom: 20,
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    width: '100%',
   },
   timeContainer: {
-    width: 80,
+    flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 16,
+    marginBottom: 8,
   },
-  startTime: {
-    fontSize: 14,
+  timeText: {
+    fontSize: 15,
+    color: '#111827',
     fontWeight: '600',
-    color: '#AF2225',
-  },
-  endTime: {
-    fontSize: 12,
-    color: '#6b7280',
-    marginTop: 2,
-  },
-  timeLine: {
-    width: 2,
-    height: '100%',
-    backgroundColor: '#e5e7eb',
-    position: 'absolute',
-    left: 39,
-    top: 24,
+    marginLeft: 10,
   },
   sessionContent: {
     flex: 1,
@@ -280,29 +268,33 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   sessionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1f2937',
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#111827',
     flex: 1,
     marginRight: 12,
+    letterSpacing: -0.5,
+    lineHeight: 26,
   },
   levelBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
   },
   levelText: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginLeft: 4,
+    fontSize: 13,
+    fontWeight: '700',
+    marginLeft: 6,
+    letterSpacing: -0.2,
   },
   sessionDescription: {
-    fontSize: 14,
-    color: '#6b7280',
-    lineHeight: 20,
-    marginBottom: 12,
+    fontSize: 16,
+    color: '#4b5563',
+    lineHeight: 24,
+    marginBottom: 16,
   },
   sessionMeta: {
     marginBottom: 12,
@@ -313,19 +305,22 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   speakersText: {
-    fontSize: 13,
-    color: '#374151',
-    marginLeft: 6,
+    fontSize: 15,
+    color: '#111827',
+    marginLeft: 10,
     flex: 1,
+    fontWeight: '600',
   },
   stageContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: 8,
   },
   stageText: {
-    fontSize: 13,
-    color: '#374151',
-    marginLeft: 6,
+    fontSize: 15,
+    color: '#111827',
+    marginLeft: 10,
+    fontWeight: '600',
   },
   sessionFooter: {
     flexDirection: 'row',
@@ -338,21 +333,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   capacityText: {
-    fontSize: 13,
+    fontSize: 14,
     color: '#6b7280',
-    marginLeft: 6,
-  },
-  registeredText: {
-    fontSize: 13,
-    color: '#10B981',
+    marginLeft: 8,
     fontWeight: '500',
   },
+  registeredText: {
+    fontSize: 14,
+    color: '#10B981',
+    fontWeight: '600',
+  },
   speakerBio: {
-    fontSize: 13,
+    fontSize: 14,
     color: '#6b7280',
     fontStyle: 'italic',
-    lineHeight: 18,
-    marginBottom: 8,
+    lineHeight: 20,
+    marginBottom: 12,
   },
   tagsContainer: {
     flexDirection: 'row',

@@ -9,6 +9,9 @@ export interface Post {
   created_at: string;
   updated_at: string;
   status: string;
+  likes_count?: number;
+  comments_count?: number;
+  is_liked_by_user?: boolean;
 }
 
 export interface User {

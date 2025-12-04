@@ -1,7 +1,7 @@
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import React from 'react';
-import { Alert, Image, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { supabase } from '../lib/supabase';
 
 import { useAuth } from '../hooks/useAuth';
@@ -19,16 +19,13 @@ interface MobileHeaderProps {
   hasBottomBorder?: boolean
   /** Background color (e.g. '#fef2f2') */
   backgroundColor?: string
-
-  showCompactMode?: boolean
   onLogout?: () => void
 }
 
 export default function MobileHeader({
   hasBackground = true,
   hasBottomBorder = false,
-  backgroundColor = '#fef2f2',
-  showCompactMode = false,
+  backgroundColor = '#ffffff',
   onLogout
 }: MobileHeaderProps) {
   const queryClient = useQueryClient();
@@ -88,6 +85,28 @@ export default function MobileHeader({
     );
   };
 
+  const renderProfilePicture = () => {
+    if (currentUser?.profile_picture) {
+      return (
+        <Image
+          source={{ uri: currentUser.profile_picture }}
+          style={styles.profilePicture}
+          resizeMode="cover"
+        />
+      );
+    } else {
+      // Show avatar with initials or default
+      const initials = currentUser?.name
+        ? currentUser.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
+        : 'U';
+      return (
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>{initials}</Text>
+        </View>
+      );
+    }
+  };
+
   return (
     <View
       style={[
@@ -96,40 +115,30 @@ export default function MobileHeader({
         hasBottomBorder && styles.bottomBorder
       ]}
     >
-      <Image
-        source={require('../../assets/images/lub-karnataka.png')}
-        style={styles.logo}
-        resizeMode='contain'
-      />
+      {/* Left section: Profile picture/avatar */}
+      <View style={styles.leftSection}>
+        {renderProfilePicture()}
+      </View>
 
-      {
-        showCompactMode ? <View style={styles.compactModeContainer}>
-          <TouchableOpacity onPress={handleLogout}>
-            <MaterialIcons name="logout" size={22} color="black" />
-          </TouchableOpacity>
-        </View> :
-          <View style={styles.fullModeContainer}>
-            <TouchableOpacity
-              style={styles.iconButton}
-              onPress={() => Alert.alert('Notifications', 'Notifications feature coming soon!')}
-            >
-              <Feather name="bell" size={18} color="#fff" />
-              {hasNotifications && (
-                <View style={styles.notificationDot}></View>
-              )}
-            </TouchableOpacity>
+      {/* Right section: Notification and logout icons */}
+      <View style={styles.rightSection}>
+        <TouchableOpacity
+          style={styles.iconButton}
+          onPress={() => Alert.alert('Notifications', 'Notifications feature coming soon!')}
+        >
+          <Feather name="bell" size={18} color="#000000" />
+          {hasNotifications && (
+            <View style={styles.notificationDot}></View>
+          )}
+        </TouchableOpacity>
 
-
-            {/* Users icon */}
-            <TouchableOpacity
-              style={styles.iconButton}
-              onPress={() => Alert.alert('Profile', 'Profile view coming soon!')}
-            >
-              <Feather name="users" size={18} color="#fff" />
-            </TouchableOpacity>
-
-          </View>
-      }
+        <TouchableOpacity
+          style={styles.iconButton}
+          onPress={handleLogout}
+        >
+          <MaterialIcons name="logout" size={18} color="#000000" />
+        </TouchableOpacity>
+      </View>
 
 
 
@@ -157,26 +166,39 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb', // border-gray-200
   },
-  logo: {
-    width: 100,
-    height: 70,
-  },
-  compactModeContainer: {
+  leftSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8, // gap-2
   },
-  fullModeContainer: {
+  rightSection: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12, // gap-[12px]
     position: 'relative',
   },
+  profilePicture: {
+    width: 40,
+    height: 40,
+    borderRadius: 20, // rounded-full
+  },
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20, // rounded-full
+    backgroundColor: '#000000', // black background
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
   iconButton: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#dc2626', // bg-primary (red-600)
+    backgroundColor: '#f3f4f6', // light gray background
     height: 40,
     width: 40,
     borderRadius: 20, // rounded-full

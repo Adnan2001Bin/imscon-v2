@@ -48,6 +48,14 @@ export const k = {
       list: () => [...k.post.root(), 'list'] as const,
       feed: () => [...k.post.root(), 'feed'] as const,
     },
+
+    event: {
+      root: () => ['event'] as const,
+      list: () => [...k.event.root(), 'list'] as const,
+      feed: () => [...k.event.root(), 'feed'] as const,
+      single: (eventId: string) => [...k.event.root(), 'single', eventId] as const,
+      agendaSessions: (eventId: string) => [...k.event.root(), 'agenda', eventId] as const,
+    },
   } as const
   
   const queryKeys = k

@@ -1,18 +1,23 @@
 import type { PostWithUser } from '@/src/types/post';
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import React, { useEffect, useState } from 'react';
 import {
+  Alert,
   Dimensions,
   Image,
   Linking,
+  Modal,
   SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View
 } from 'react-native';
+import { addComment, getPostComments, getPostLikeStatus, togglePostLike } from '../services/post';
 
 const { width, height } = Dimensions.get('window');
 
@@ -26,6 +31,34 @@ interface PostDetailProps {
 
 export default function PostDetail({ post, onBack, onLike, onComment, onShare }: PostDetailProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [likesCount, setLikesCount] = useState(post.likes_count || 0);
+  const [commentsCount, setCommentsCount] = useState(post.comments_count || 0);
+  const [isLiked, setIsLiked] = useState(post.is_liked_by_user || false);
+  const [isLikeLoading, setIsLikeLoading] = useState(false);
+  const [isCommentModalVisible, setIsCommentModalVisible] = useState(false);
+  const [commentText, setCommentText] = useState('');
+  const [isCommentLoading, setIsCommentLoading] = useState(false);
+
+  // Load initial like status and counts
+  useEffect(() => {
+    const loadLikeStatus = async () => {
+      try {
+        const { isLiked, likesCount } = await getPostLikeStatus(post.id);
+        setIsLiked(isLiked);
+        setLikesCount(likesCount);
+      } catch (error) {
+        console.error('Failed to load like status:', error);
+      }
+    };
+
+    loadLikeStatus();
+  }, [post.id]);
+
+  // Load comments
+  const { data: comments, isLoading: isLoadingComments } = useQuery({
+    queryKey: ['post-comments', post.id],
+    queryFn: () => getPostComments(post.id),
+  });
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -43,6 +76,48 @@ export default function PostDetail({ post, onBack, onLike, onComment, onShare }:
       day: 'numeric',
       year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
     });
+  };
+
+  const handleLike = async () => {
+    if (isLikeLoading) return;
+
+    setIsLikeLoading(true);
+    try {
+      const result = await togglePostLike(post.id);
+      setIsLiked(result.liked);
+      setLikesCount(prev => result.liked ? prev + 1 : Math.max(0, prev - 1));
+
+      // Call the parent onLike callback if provided
+      onLike?.();
+    } catch (error) {
+      console.error('Failed to toggle like:', error);
+      Alert.alert('Error', 'Failed to update like. Please try again.');
+    } finally {
+      setIsLikeLoading(false);
+    }
+  };
+
+  const handleComment = () => {
+    setIsCommentModalVisible(true);
+    onComment?.();
+  };
+
+  const handleAddComment = async () => {
+    if (!commentText.trim() || isCommentLoading) return;
+
+    setIsCommentLoading(true);
+    try {
+      await addComment(post.id, commentText);
+      setCommentsCount(prev => prev + 1);
+      setCommentText('');
+      setIsCommentModalVisible(false);
+      Alert.alert('Success', 'Comment added successfully!');
+    } catch (error) {
+      console.error('Failed to add comment:', error);
+      Alert.alert('Error', 'Failed to add comment. Please try again.');
+    } finally {
+      setIsCommentLoading(false);
+    }
   };
 
   const nextImage = () => {
@@ -346,14 +421,26 @@ export default function PostDetail({ post, onBack, onLike, onComment, onShare }:
 
       {/* Actions */}
       <View style={styles.actions}>
-        <TouchableOpacity style={styles.actionButton} onPress={onLike}>
-          <Ionicons name="thumbs-up-outline" size={20} color="#666" />
-          <Text style={styles.actionText}>Like</Text>
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={handleLike}
+          disabled={isLikeLoading}
+        >
+          <Ionicons
+            name={isLiked ? "thumbs-up" : "thumbs-up-outline"}
+            size={20}
+            color={isLiked ? "#AF2225" : "#666"}
+          />
+          <Text style={[styles.actionText, isLiked && styles.likedText]}>
+            {likesCount > 0 ? `${likesCount} Like${likesCount !== 1 ? 's' : ''}` : 'Like'}
+          </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.actionButton} onPress={onComment}>
+        <TouchableOpacity style={styles.actionButton} onPress={handleComment}>
           <Ionicons name="chatbubble-outline" size={20} color="#666" />
-          <Text style={styles.actionText}>Comment</Text>
+          <Text style={styles.actionText}>
+            {commentsCount > 0 ? `${commentsCount} Comment${commentsCount !== 1 ? 's' : ''}` : 'Comment'}
+          </Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.actionButton} onPress={onShare}>
@@ -361,6 +448,76 @@ export default function PostDetail({ post, onBack, onLike, onComment, onShare }:
           <Text style={styles.actionText}>Share</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Comment Modal */}
+      <Modal
+        visible={isCommentModalVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setIsCommentModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setIsCommentModalVisible(false)}
+            >
+              <Ionicons name="close" size={24} color="#1f2937" />
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Add Comment</Text>
+            <TouchableOpacity
+              style={[styles.postButton, (!commentText.trim() || isCommentLoading) && styles.postButtonDisabled]}
+              onPress={handleAddComment}
+              disabled={!commentText.trim() || isCommentLoading}
+            >
+              <Text style={[styles.postButtonText, (!commentText.trim() || isCommentLoading) && styles.postButtonTextDisabled]}>
+                {isCommentLoading ? 'Posting...' : 'Post'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.commentInputContainer}>
+            <TextInput
+              style={styles.commentInput}
+              placeholder="Write a comment..."
+              value={commentText}
+              onChangeText={setCommentText}
+              multiline
+              maxLength={500}
+              autoFocus
+            />
+            <Text style={styles.charCount}>
+              {commentText.length}/500
+            </Text>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Comments Section */}
+      {comments && comments.length > 0 && (
+        <View style={styles.commentsSection}>
+          <Text style={styles.commentsTitle}>Comments ({comments.length})</Text>
+          {comments.map((comment) => (
+            <View key={comment.id} style={styles.commentItem}>
+              <Image
+                source={comment.user?.profile_picture ? { uri: comment.user.profile_picture } : require('../../../assets/images/lub-karnataka.png')}
+                style={styles.commentAvatar}
+              />
+              <View style={styles.commentContent}>
+                <View style={styles.commentHeader}>
+                  <Text style={styles.commentUserName}>
+                    {comment.user?.name || 'Unknown User'}
+                  </Text>
+                  <Text style={styles.commentTimestamp}>
+                    {formatDate(comment.created_at)}
+                  </Text>
+                </View>
+                <Text style={styles.commentText}>{comment.content}</Text>
+              </View>
+            </View>
+          ))}
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -593,5 +750,123 @@ const styles = StyleSheet.create({
     color: '#666',
     marginLeft: 6,
     fontWeight: '500',
+  },
+  likedText: {
+    color: '#AF2225',
+  },
+  // Modal styles
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#f8f9fa',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    paddingTop: 50, // Account for status bar
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  closeButton: {
+    padding: 4,
+  },
+  modalTitle: {
+    flex: 1,
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1f2937',
+    textAlign: 'center',
+  },
+  postButton: {
+    backgroundColor: '#AF2225',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  postButtonDisabled: {
+    backgroundColor: '#e5e7eb',
+  },
+  postButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  postButtonTextDisabled: {
+    color: '#9ca3af',
+  },
+  commentInputContainer: {
+    flex: 1,
+    padding: 20,
+  },
+  commentInput: {
+    backgroundColor: '#ffffff',
+    borderRadius: 8,
+    padding: 16,
+    fontSize: 16,
+    minHeight: 120,
+    textAlignVertical: 'top',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  charCount: {
+    fontSize: 12,
+    color: '#9ca3af',
+    textAlign: 'right',
+    marginTop: 8,
+  },
+  // Comments section styles
+  commentsSection: {
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+  },
+  commentsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 16,
+  },
+  commentItem: {
+    flexDirection: 'row',
+    marginBottom: 16,
+  },
+  commentAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    marginRight: 12,
+  },
+  commentContent: {
+    flex: 1,
+  },
+  commentHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  commentUserName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#111827',
+    marginRight: 8,
+  },
+  commentTimestamp: {
+    fontSize: 12,
+    color: '#9ca3af',
+  },
+  commentText: {
+    fontSize: 14,
+    color: '#4b5563',
+    lineHeight: 20,
   },
 });

@@ -238,3 +238,149 @@ export const deletePost = async (postId: string) => {
     throw new Error(`Failed to delete post: ${error.message}`);
   }
 };
+
+// Like/Unlike a post
+export const togglePostLike = async (postId: string) => {
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    throw new Error('User not authenticated');
+  }
+
+  // Check if user already liked the post
+  const { data: existingLike, error: checkError } = await supabase
+    .from('likes')
+    .select('id')
+    .eq('post_id', postId)
+    .eq('user_id', user.id)
+    .single();
+
+  if (checkError && checkError.code !== 'PGRST116') { // PGRST116 is "not found"
+    throw new Error(`Failed to check like status: ${checkError.message}`);
+  }
+
+  if (existingLike) {
+    // Unlike the post
+    const { error: deleteError } = await supabase
+      .from('likes')
+      .delete()
+      .eq('id', existingLike.id);
+
+    if (deleteError) {
+      throw new Error(`Failed to unlike post: ${deleteError.message}`);
+    }
+
+    return { liked: false };
+  } else {
+    // Like the post
+    const { error: insertError } = await supabase
+      .from('likes')
+      .insert({
+        post_id: postId,
+        user_id: user.id,
+      });
+
+    if (insertError) {
+      throw new Error(`Failed to like post: ${insertError.message}`);
+    }
+
+    return { liked: true };
+  }
+};
+
+// Get like status for a post
+export const getPostLikeStatus = async (postId: string) => {
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { isLiked: false, likesCount: 0 };
+  }
+
+  // Get like count
+  const { count: likesCount, error: countError } = await supabase
+    .from('likes')
+    .select('*', { count: 'exact', head: true })
+    .eq('post_id', postId);
+
+  if (countError) {
+    throw new Error(`Failed to get likes count: ${countError.message}`);
+  }
+
+  // Check if current user liked the post
+  const { data: userLike, error: likeError } = await supabase
+    .from('likes')
+    .select('id')
+    .eq('post_id', postId)
+    .eq('user_id', user.id)
+    .single();
+
+  const isLiked = !likeError && !!userLike;
+
+  return {
+    isLiked,
+    likesCount: likesCount || 0,
+  };
+};
+
+// Add a comment to a post
+export const addComment = async (postId: string, content: string) => {
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    throw new Error('User not authenticated');
+  }
+
+  const { data: commentData, error: commentError } = await supabase
+    .from('comments')
+    .insert({
+      post_id: postId,
+      user_id: user.id,
+      content: content.trim(),
+    })
+    .select('*')
+    .single();
+
+  if (commentError) {
+    throw new Error(`Failed to add comment: ${commentError.message}`);
+  }
+
+  // Fetch user data for the comment
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('id, name, designation, company, profile_picture')
+    .eq('id', user.id)
+    .single();
+
+  if (userError) {
+    console.warn('Failed to fetch user data for comment:', userError);
+  }
+
+  return {
+    ...commentData,
+    user: userData || {
+      id: user.id,
+      name: 'Unknown User',
+      designation: null,
+      company: null,
+      profile_picture: null,
+    },
+  };
+};
+
+// Get comments for a post
+export const getPostComments = async (postId: string) => {
+  const { data: commentsData, error: commentsError } = await supabase
+    .from('comments')
+    .select(`
+      *,
+      user:users(id, name, designation, company, profile_picture)
+    `)
+    .eq('post_id', postId)
+    .order('created_at', { ascending: true });
+
+  if (commentsError) {
+    throw new Error(`Failed to fetch comments: ${commentsError.message}`);
+  }
+
+  return commentsData || [];
+};

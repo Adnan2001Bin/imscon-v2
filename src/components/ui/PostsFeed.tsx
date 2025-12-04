@@ -15,14 +15,21 @@ import { getAdvertisementsOptions } from '../services/advertisement';
 import { getPostsFeedOptions } from '../services/post';
 import AdvertisementBanner from './AdvertisementBanner';
 import Post from './Post';
+import PostSkeleton from './PostSkeleton';
 import ShowAdsButton from './ShowAdsButton';
+
+type FeedItem =
+  | { type: 'post'; data: PostWithUser }
+  | { type: 'advertisement'; data: any }
+  | { type: 'showAdsButton' };
 
 interface PostsFeedProps {
   onRefresh?: () => void;
   refreshing?: boolean;
+  onScroll?: (event: any) => void;
 }
 
-export default function PostsFeed({ onRefresh, refreshing }: PostsFeedProps) {
+export default function PostsFeed({ onRefresh, refreshing, onScroll }: PostsFeedProps) {
   const [showBanner, setShowBanner] = useState(true);
   const [currentAdIndex, setCurrentAdIndex] = useState(0);
 
@@ -55,7 +62,7 @@ export default function PostsFeed({ onRefresh, refreshing }: PostsFeedProps) {
 
   // Create combined data array with advertisement at the top if banner should be shown
   const feedData = React.useMemo(() => {
-    const data = [...posts];
+    const data: FeedItem[] = posts.map(post => ({ type: 'post' as const, data: post }));
     if (showBanner && currentAdvertisement) {
       data.unshift({ type: 'advertisement', data: currentAdvertisement });
     } else if (!showBanner && advertisements && advertisements.length > 0) {
@@ -75,7 +82,7 @@ export default function PostsFeed({ onRefresh, refreshing }: PostsFeedProps) {
     onRefresh?.();
   };
 
-  const renderItem = ({ item }: { item: any }) => {
+  const renderItem = ({ item }: { item: FeedItem }) => {
     if (item.type === 'advertisement') {
       return (
         <AdvertisementBanner
@@ -92,31 +99,31 @@ export default function PostsFeed({ onRefresh, refreshing }: PostsFeedProps) {
     // Regular post item
     return (
       <Post
-        post={item}
+        post={item.data}
         onLike={() => {
           // TODO: Implement like functionality
-          console.log('Like post:', item.id);
+          console.log('Like post:', item.data.id);
         }}
         onComment={() => {
           // TODO: Implement comment functionality
-          console.log('Comment on post:', item.id);
+          console.log('Comment on post:', item.data.id);
         }}
         onShare={() => {
           // TODO: Implement share functionality
-          console.log('Share post:', item.id);
+          console.log('Share post:', item.data.id);
         }}
       />
     );
   };
 
-  const getItemKey = (item: any, index: number) => {
+  const getItemKey = (item: FeedItem, index: number) => {
     if (item.type === 'advertisement') {
       return `advertisement-${currentAdvertisement?.id || 'current'}`;
     }
     if (item.type === 'showAdsButton') {
       return 'show-ads-button';
     }
-    return item.id;
+    return item.data.id;
   };
 
   const renderFooter = () => {
@@ -143,9 +150,10 @@ export default function PostsFeed({ onRefresh, refreshing }: PostsFeedProps) {
   const renderEmpty = () => {
     if (isLoading) {
       return (
-        <View style={styles.emptyContainer}>
-          <ActivityIndicator size="large" color="#AF2225" />
-          <Text style={styles.emptyText}>Loading posts...</Text>
+        <View style={styles.loadingContainer}>
+          {Array.from({ length: 5 }, (_, index) => (
+            <PostSkeleton key={index} showSponsored={index === 0} />
+          ))}
         </View>
       );
     }
@@ -184,6 +192,8 @@ export default function PostsFeed({ onRefresh, refreshing }: PostsFeedProps) {
       stickyHeaderIndices={showBanner && currentAdvertisement ? [0] : []}
       onEndReached={handleLoadMore}
       onEndReachedThreshold={0.5}
+      onScroll={onScroll}
+      scrollEventThrottle={16}
       ListFooterComponent={renderFooter}
       ListEmptyComponent={renderEmpty}
       refreshControl={
@@ -195,7 +205,7 @@ export default function PostsFeed({ onRefresh, refreshing }: PostsFeedProps) {
         />
       }
       showsVerticalScrollIndicator={false}
-      contentContainerStyle={posts.length === 0 ? styles.contentContainer : undefined}
+      contentContainerStyle={posts.length === 0 ? styles.contentContainer : styles.postsContainer}
     />
   );
 }
@@ -203,6 +213,12 @@ export default function PostsFeed({ onRefresh, refreshing }: PostsFeedProps) {
 const styles = StyleSheet.create({
   contentContainer: {
     flex: 1,
+  },
+  postsContainer: {
+    paddingBottom: 100, // Extra bottom padding for mobile bottom navigation
+  },
+  loadingContainer: {
+    paddingVertical: 8,
   },
   footer: {
     padding: 16,

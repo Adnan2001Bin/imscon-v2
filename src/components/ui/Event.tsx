@@ -8,12 +8,9 @@ const { width } = Dimensions.get('window');
 
 interface EventProps {
   event: EventWithUser;
-  onLike?: () => void;
-  onComment?: () => void;
-  onShare?: () => void;
 }
 
-export default function Event({ event, onLike, onComment, onShare }: EventProps) {
+export default function Event({ event }: EventProps) {
   const router = useRouter();
 
   const formatDate = (dateString: string) => {
@@ -209,13 +206,7 @@ export default function Event({ event, onLike, onComment, onShare }: EventProps)
         />
         <View style={styles.headerText}>
           <Text style={styles.userName}>
-            {event.user?.name || 'Unknown User'}
-          </Text>
-          <Text style={styles.userDetails}>
-            {event.user?.designation && event.user?.company
-              ? `${event.user.designation} at ${event.user.company}`
-              : event.user?.designation || event.user?.company || 'Event Organizer'
-            }
+            LUB
           </Text>
           <Text style={styles.timestamp}>{formatDate(event.created_at)}</Text>
         </View>
@@ -237,24 +228,6 @@ export default function Event({ event, onLike, onComment, onShare }: EventProps)
 
       {/* Attachments */}
       {renderAttachments()}
-
-      {/* Actions */}
-      <View style={styles.actions}>
-        <TouchableOpacity style={styles.actionButton} onPress={onLike}>
-          <Ionicons name="heart-outline" size={20} color="#666" />
-          <Text style={styles.actionText}>Like</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.actionButton} onPress={onComment}>
-          <Ionicons name="chatbubble-outline" size={20} color="#666" />
-          <Text style={styles.actionText}>Comment</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.actionButton} onPress={onShare}>
-          <Ionicons name="share-outline" size={20} color="#666" />
-          <Text style={styles.actionText}>Share</Text>
-        </TouchableOpacity>
-      </View>
     </TouchableOpacity>
   );
 }
@@ -262,178 +235,183 @@ export default function Event({ event, onLike, onComment, onShare }: EventProps)
 const styles = StyleSheet.create({
   container: {
     backgroundColor: '#ffffff',
-    marginHorizontal: 16,
+    width: '100%',
     marginVertical: 8,
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    borderRadius: 8,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#f3f4f6',
   },
   coverImageContainer: {
-    marginBottom: 16,
-    borderRadius: 8,
+    marginBottom: 20,
+    borderRadius: 6,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
   },
   coverImage: {
     width: '100%',
-    height: 180,
-    borderRadius: 8,
+    height: 200,
+    borderRadius: 6,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 12,
+    marginBottom: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
   },
   avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    marginRight: 12,
+    width: 50,
+    height: 50,
+    borderRadius: 12,
+    marginRight: 14,
+    borderWidth: 2,
+    borderColor: '#f3f4f6',
   },
   headerText: {
     flex: 1,
   },
   userName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#000',
-    marginBottom: 2,
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 4,
+    letterSpacing: -0.3,
   },
   userDetails: {
     fontSize: 14,
-    color: '#666',
-    marginBottom: 2,
+    color: '#6b7280',
+    marginBottom: 4,
+    lineHeight: 18,
   },
   timestamp: {
-    fontSize: 12,
-    color: '#999',
+    fontSize: 13,
+    color: '#9ca3af',
+    fontWeight: '500',
   },
   moreButton: {
-    padding: 4,
+    padding: 6,
+    backgroundColor: '#f9fafb',
+    borderRadius: 4,
   },
   eventTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1f2937',
-    marginBottom: 8,
-    lineHeight: 24,
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#111827',
+    marginBottom: 12,
+    lineHeight: 26,
+    letterSpacing: -0.5,
   },
   description: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: '#374151',
-    marginBottom: 16,
+    fontSize: 16,
+    lineHeight: 24,
+    color: '#4b5563',
+    marginBottom: 20,
   },
   eventDetails: {
-    marginBottom: 16,
+    marginBottom: 20,
+    backgroundColor: '#f9fafb',
+    borderRadius: 6,
+    padding: 16,
   },
   eventMeta: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
-    gap: 8,
+    marginBottom: 16,
+    gap: 10,
   },
   categoryBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
   },
   categoryText: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginLeft: 4,
+    fontSize: 13,
+    fontWeight: '700',
+    marginLeft: 6,
+    letterSpacing: -0.2,
   },
   onlineBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#06B6D415',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 16,
+    backgroundColor: '#e0f2fe',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#bae6fd',
   },
   onlineText: {
-    fontSize: 12,
-    color: '#06B6D4',
-    fontWeight: '600',
-    marginLeft: 4,
+    fontSize: 13,
+    color: '#0369a1',
+    fontWeight: '700',
+    marginLeft: 6,
+    letterSpacing: -0.2,
   },
   eventInfo: {
-    gap: 8,
+    gap: 12,
   },
   dateTimeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: 8,
   },
   dateText: {
-    fontSize: 14,
-    color: '#374151',
-    fontWeight: '500',
-    marginLeft: 8,
+    fontSize: 15,
+    color: '#111827',
+    fontWeight: '600',
+    marginLeft: 10,
+    flex: 1,
   },
   timeText: {
-    fontSize: 14,
-    color: '#374151',
-    fontWeight: '500',
-    marginLeft: 8,
+    fontSize: 15,
+    color: '#111827',
+    fontWeight: '600',
+    marginLeft: 10,
+    flex: 1,
   },
   locationContainer: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   locationText: {
-    fontSize: 14,
-    color: '#374151',
-    fontWeight: '500',
-    marginLeft: 8,
+    fontSize: 15,
+    color: '#111827',
+    fontWeight: '600',
+    marginLeft: 10,
     flex: 1,
   },
   attachmentsContainer: {
-    marginBottom: 16,
+    marginBottom: 0,
   },
   attachmentItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-    padding: 10,
-    borderRadius: 8,
+    backgroundColor: '#f3f4f6',
+    padding: 12,
+    borderRadius: 6,
     marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
   },
   attachmentText: {
     fontSize: 14,
-    color: '#333',
-    marginLeft: 8,
+    color: '#374151',
+    marginLeft: 10,
     flex: 1,
+    fontWeight: '500',
   },
   moreAttachmentsText: {
-    fontSize: 12,
-    color: '#666',
+    fontSize: 13,
+    color: '#6b7280',
     fontStyle: 'italic',
     textAlign: 'center',
-    marginTop: 4,
-  },
-  actions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-    paddingTop: 12,
-  },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-  },
-  actionText: {
-    fontSize: 14,
-    color: '#666',
-    marginLeft: 6,
+    marginTop: 6,
     fontWeight: '500',
   },
 });

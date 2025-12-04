@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { getEventsFeedOptions } from '../services/event';
 import Event from './Event';
+import EventSkeleton from './EventSkeleton';
 
 interface EventsFeedProps {
   onRefresh?: () => void;
@@ -45,23 +46,7 @@ export default function EventsFeed({ onRefresh, refreshing, onScroll }: EventsFe
   };
 
   const renderItem = ({ item }: { item: EventWithUser }) => {
-    return (
-      <Event
-        event={item}
-        onLike={() => {
-          // TODO: Implement like functionality
-          console.log('Like event:', item.id);
-        }}
-        onComment={() => {
-          // TODO: Implement comment functionality
-          console.log('Comment on event:', item.id);
-        }}
-        onShare={() => {
-          // TODO: Implement share functionality
-          console.log('Share event:', item.id);
-        }}
-      />
-    );
+    return <Event event={item} />;
   };
 
   const getItemKey = (item: EventWithUser) => {
@@ -92,9 +77,14 @@ export default function EventsFeed({ onRefresh, refreshing, onScroll }: EventsFe
   const renderEmpty = () => {
     if (isLoading) {
       return (
-        <View style={styles.emptyContainer}>
-          <ActivityIndicator size="large" color="#AF2225" />
-          <Text style={styles.emptyText}>Loading events...</Text>
+        <View style={styles.loadingContainer}>
+          {Array.from({ length: 4 }, (_, index) => (
+            <EventSkeleton
+              key={index}
+              showCoverImage={index !== 2}
+              showAttachments={index === 0}
+            />
+          ))}
         </View>
       );
     }
@@ -145,7 +135,7 @@ export default function EventsFeed({ onRefresh, refreshing, onScroll }: EventsFe
         />
       }
       showsVerticalScrollIndicator={false}
-      contentContainerStyle={events.length === 0 ? styles.contentContainer : undefined}
+      contentContainerStyle={events.length === 0 ? styles.contentContainer : styles.eventsContainer}
     />
   );
 }
@@ -153,6 +143,12 @@ export default function EventsFeed({ onRefresh, refreshing, onScroll }: EventsFe
 const styles = StyleSheet.create({
   contentContainer: {
     flex: 1,
+  },
+  eventsContainer: {
+    paddingBottom: 100, // Extra bottom padding for mobile bottom navigation
+  },
+  loadingContainer: {
+    paddingVertical: 8,
   },
   footer: {
     padding: 16,

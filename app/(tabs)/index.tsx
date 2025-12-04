@@ -1,16 +1,22 @@
+import MobileBottomNavigation from '@/src/components/MobileBottomNavigation';
+import MobileHeader from '@/src/components/MobileHeader';
 import CompleteProfileScreen from '@/src/components/screens/CompleteProfileScreen';
 import LoginScreen from '@/src/components/screens/LoginScreen';
-import MobileBottomNavigation from '@/src/components/MobileBottomNavigation';
 import PostsFeed from '@/src/components/ui/PostsFeed';
 import { useAuth } from '@/src/hooks/useAuth';
 import { supabase } from '@/src/lib/supabase';
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, Animated, StyleSheet, Text, View } from 'react-native';
 
 export default function HomeScreen() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [needsProfileCompletion, setNeedsProfileCompletion] = useState(false);
   const [isCheckingProfile, setIsCheckingProfile] = useState(false);
+
+  // Header animation
+  const headerTranslateY = useRef(new Animated.Value(0)).current;
+  const lastScrollY = useRef(0);
+  const scrollDirection = useRef('up');
 
   // Use auth hook to automatically restore session on app restart
   const { data: authData, isLoading: isAuthLoading, error: authError } = useAuth();
@@ -126,6 +132,35 @@ export default function HomeScreen() {
     }
   };
 
+  // Header scroll animation
+  const handleScroll = (event: any) => {
+    const currentScrollY = event.nativeEvent.contentOffset.y;
+    const diff = currentScrollY - lastScrollY.current;
+
+    // Determine scroll direction
+    if (Math.abs(diff) < 10) return; // Ignore small movements
+
+    if (diff > 0 && scrollDirection.current !== 'down') {
+      // Scrolling down - hide header
+      scrollDirection.current = 'down';
+      Animated.timing(headerTranslateY, {
+        toValue: -80, // Hide header (adjust based on header height)
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    } else if (diff < 0 && scrollDirection.current !== 'up') {
+      // Scrolling up - show header
+      scrollDirection.current = 'up';
+      Animated.timing(headerTranslateY, {
+        toValue: 0, // Show header
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    }
+
+    lastScrollY.current = currentScrollY;
+  };
+
   // Show beautiful loading screen while checking authentication
   if (isAuthLoading) {
     return (
@@ -159,18 +194,19 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Feed</Text>
-        <TouchableOpacity
-          style={styles.logoutButton}
-          onPress={handleLogout}
-        >
-          <Text style={styles.logoutButtonText}>Logout</Text>
-        </TouchableOpacity>
-      </View>
+      <Animated.View
+        style={[
+          styles.headerContainer,
+          {
+            transform: [{ translateY: headerTranslateY }],
+          },
+        ]}
+      >
+        <MobileHeader onLogout={handleLogout} />
+      </Animated.View>
 
       <View style={styles.feedContainer}>
-        <PostsFeed />
+        <PostsFeed onScroll={handleScroll} />
       </View>
 
       <MobileBottomNavigation />
@@ -183,37 +219,18 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fef2f2',
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    paddingTop: 50, // Account for status bar
+  headerContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 1000,
     backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#11181C',
   },
   feedContainer: {
     flex: 1,
     backgroundColor: '#f9fafb',
-  },
-  logoutButton: {
-    backgroundColor: '#DC2626',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 6,
-    alignItems: 'center',
-  },
-  logoutButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '500',
+    paddingTop: 75, // Space for the header (adjust based on header height)
   },
   loadingContainer: {
     justifyContent: 'center',
