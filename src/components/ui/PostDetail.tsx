@@ -722,7 +722,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 8,
     paddingHorizontal: 16,
-    marginRight: 16,
+    marginRight: 8,
     flex: 1,
     justifyContent: 'center',
   },
