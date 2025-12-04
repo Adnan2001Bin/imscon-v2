@@ -1,64 +1,122 @@
-import type { PostWithUser } from '@/src/types/post';
+import type { PostWithUser, Comment } from '@/src/types/post';
 import { Ionicons } from '@expo/vector-icons';
-import { useQuery } from '@tanstack/react-query';
+import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
   Dimensions,
   Image,
   Linking,
-  Modal,
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
-  View
+  View,
+  ScrollView,
+  RefreshControl,
 } from 'react-native';
-import { addComment, getPostComments, getPostLikeStatus, togglePostLike } from '../services/post';
+import { getPostLikeStatus, togglePostLike, getPostComments } from '../services/post';
+import CommentSection from './CommentSection';
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 
 interface PostDetailProps {
   post: PostWithUser;
-  onBack?: () => void;
+  postId?: string; // If post is not passed directly, we can use postId to fetch it
   onLike?: () => void;
   onComment?: () => void;
   onShare?: () => void;
 }
 
-export default function PostDetail({ post, onBack, onLike, onComment, onShare }: PostDetailProps) {
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [likesCount, setLikesCount] = useState(post.likes_count || 0);
-  const [commentsCount, setCommentsCount] = useState(post.comments_count || 0);
-  const [isLiked, setIsLiked] = useState(post.is_liked_by_user || false);
+export default function PostDetail({ post, postId, onLike, onComment, onShare }: PostDetailProps) {
+  const router = useRouter();
+  const [likesCount, setLikesCount] = useState(post?.likes_count || 0);
+  const [commentsCount, setCommentsCount] = useState(post?.comments_count || 0);
+  const [isLiked, setIsLiked] = useState(post?.is_liked_by_user || false);
   const [isLikeLoading, setIsLikeLoading] = useState(false);
   const [isCommentModalVisible, setIsCommentModalVisible] = useState(false);
-  const [commentText, setCommentText] = useState('');
-  const [isCommentLoading, setIsCommentLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [isLoadingComments, setIsLoadingComments] = useState(false);
+  const [postData, setPostData] = useState<PostWithUser | null>(post || null);
 
-  // Load initial like status and counts
+  // If only postId is provided, fetch the post
   useEffect(() => {
-    const loadLikeStatus = async () => {
-      try {
-        const { isLiked, likesCount } = await getPostLikeStatus(post.id);
-        setIsLiked(isLiked);
-        setLikesCount(likesCount);
-      } catch (error) {
-        console.error('Failed to load like status:', error);
-      }
-    };
+    if (postId && !post) {
+      fetchPost();
+    }
+  }, [postId]);
 
-    loadLikeStatus();
-  }, [post.id]);
+  const fetchPost = async () => {
+    // You'll need to create a getPostById service function
+    // For now, using the existing post prop
+    console.log('Fetch post with ID:', postId);
+  };
 
-  // Load comments
-  const { data: comments, isLoading: isLoadingComments } = useQuery({
-    queryKey: ['post-comments', post.id],
-    queryFn: () => getPostComments(post.id),
-  });
+  const loadLikeStatus = async () => {
+    try {
+      const { isLiked, likesCount } = await getPostLikeStatus(postData?.id || postId || '');
+      setIsLiked(isLiked);
+      setLikesCount(likesCount);
+    } catch (error) {
+      console.error('Failed to load like status:', error);
+    }
+  };
+
+  const loadComments = async () => {
+    if (!postData?.id && !postId) return;
+
+    setIsLoadingComments(true);
+    try {
+      const commentsData = await getPostComments(postData?.id || postId || '');
+      setComments(commentsData || []);
+      setCommentsCount(commentsData?.length || 0);
+    } catch (error) {
+      console.error('Failed to load comments:', error);
+    } finally {
+      setIsLoadingComments(false);
+    }
+  };
+
+  // Load initial data
+  useEffect(() => {
+    if (postData || postId) {
+      loadLikeStatus();
+      loadComments();
+    }
+  }, [postData, postId]);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await Promise.all([loadLikeStatus(), loadComments()]);
+    setRefreshing(false);
+  };
+
+  const handleLike = async () => {
+    if (isLikeLoading || !postData) return;
+
+    setIsLikeLoading(true);
+    try {
+      const result = await togglePostLike(postData.id);
+      setIsLiked(result.liked);
+      setLikesCount(prev => result.liked ? prev + 1 : Math.max(0, prev - 1));
+      onLike?.();
+    } catch (error) {
+      console.error('Failed to toggle like:', error);
+      Alert.alert('Error', 'Failed to update like. Please try again.');
+    } finally {
+      setIsLikeLoading(false);
+    }
+  };
+
+  const handleComment = () => {
+    setIsCommentModalVisible(true);
+    onComment?.();
+  };
+
+  const handleCommentsChange = (updatedComments: Comment[]) => {
+    setComments(updatedComments);
+    setCommentsCount(updatedComments.length);
+  };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -78,139 +136,79 @@ export default function PostDetail({ post, onBack, onLike, onComment, onShare }:
     });
   };
 
-  const handleLike = async () => {
-    if (isLikeLoading) return;
+  // Render media, documents, content, etc. (same as Post.tsx)
+  const renderMedia = () => {
+    if (!postData?.media_urls || postData.media_urls.length === 0) return null;
 
-    setIsLikeLoading(true);
-    try {
-      const result = await togglePostLike(post.id);
-      setIsLiked(result.liked);
-      setLikesCount(prev => result.liked ? prev + 1 : Math.max(0, prev - 1));
+    const { media_urls } = postData;
+    const imageCount = media_urls.length;
 
-      // Call the parent onLike callback if provided
-      onLike?.();
-    } catch (error) {
-      console.error('Failed to toggle like:', error);
-      Alert.alert('Error', 'Failed to update like. Please try again.');
-    } finally {
-      setIsLikeLoading(false);
-    }
-  };
+    const getImageLayout = () => {
+      if (imageCount === 1) {
+        return { rows: [{ images: [0], style: styles.singleImage }] };
+      } else if (imageCount === 2) {
+        return { rows: [{ images: [0, 1], style: styles.twoImages }] };
+      } else if (imageCount === 3) {
+        return {
+          rows: [
+            { images: [0], style: styles.singleImage },
+            { images: [1, 2], style: styles.twoImages }
+          ]
+        };
+      } else {
+        return {
+          rows: [
+            { images: [0], style: styles.singleImage },
+            { images: [1, 2], style: styles.twoImages }
+          ],
+          hasOverlay: true,
+          overlayCount: imageCount - 3
+        };
+      }
+    };
 
-  const handleComment = () => {
-    setIsCommentModalVisible(true);
-    onComment?.();
-  };
-
-  const handleAddComment = async () => {
-    if (!commentText.trim() || isCommentLoading) return;
-
-    setIsCommentLoading(true);
-    try {
-      await addComment(post.id, commentText);
-      setCommentsCount(prev => prev + 1);
-      setCommentText('');
-      setIsCommentModalVisible(false);
-      Alert.alert('Success', 'Comment added successfully!');
-    } catch (error) {
-      console.error('Failed to add comment:', error);
-      Alert.alert('Error', 'Failed to add comment. Please try again.');
-    } finally {
-      setIsCommentLoading(false);
-    }
-  };
-
-  const nextImage = () => {
-    if (post.media_urls && currentImageIndex < post.media_urls.length - 1) {
-      setCurrentImageIndex(currentImageIndex + 1);
-    }
-  };
-
-  const prevImage = () => {
-    if (currentImageIndex > 0) {
-      setCurrentImageIndex(currentImageIndex - 1);
-    }
-  };
-
-  const renderImageGallery = () => {
-    if (!post.media_urls || post.media_urls.length === 0) return null;
+    const layout = getImageLayout();
 
     return (
-      <View style={styles.imageGalleryContainer}>
-        <Image
-          source={{ uri: post.media_urls[currentImageIndex] }}
-          style={styles.fullScreenImage}
-          resizeMode="contain"
-        />
+      <View style={styles.mediaContainer}>
+        {layout.rows.map((row, rowIndex) => (
+          <View key={rowIndex} style={row.style}>
+            {row.images.map((imageIndex, colIndex) => {
+              const isLastInRow = colIndex === row.images.length - 1;
+              const hasOverlay = layout.hasOverlay && rowIndex === layout.rows.length - 1 && isLastInRow;
 
-        {/* Navigation arrows */}
-        {post.media_urls.length > 1 && (
-          <>
-            {currentImageIndex > 0 && (
-              <TouchableOpacity style={[styles.navButton, styles.leftButton]} onPress={prevImage}>
-                <Ionicons name="chevron-back" size={30} color="white" />
-              </TouchableOpacity>
-            )}
-
-            {currentImageIndex < post.media_urls.length - 1 && (
-              <TouchableOpacity style={[styles.navButton, styles.rightButton]} onPress={nextImage}>
-                <Ionicons name="chevron-forward" size={30} color="white" />
-              </TouchableOpacity>
-            )}
-          </>
-        )}
-
-        {/* Image counter */}
-        {post.media_urls.length > 1 && (
-          <View style={styles.imageCounter}>
-            <Text style={styles.counterText}>
-              {currentImageIndex + 1} / {post.media_urls.length}
-            </Text>
+              return (
+                <View key={imageIndex} style={styles.imageWrapper}>
+                  <Image
+                    source={{ uri: media_urls[imageIndex] }}
+                    style={styles.gridImage}
+                    resizeMode="cover"
+                  />
+                  {hasOverlay && (
+                    <View style={styles.overlay}>
+                      <Text style={styles.overlayText}>+{layout.overlayCount}</Text>
+                    </View>
+                  )}
+                </View>
+              );
+            })}
           </View>
-        )}
-
-        {/* Thumbnail strip */}
-        {post.media_urls.length > 1 && (
-          <ScrollView
-            horizontal
-            style={styles.thumbnailStrip}
-            showsHorizontalScrollIndicator={false}
-          >
-            {post.media_urls.map((url, index) => (
-              <TouchableOpacity
-                key={index}
-                onPress={() => setCurrentImageIndex(index)}
-                style={styles.thumbnailWrapper}
-              >
-                <Image
-                  source={{ uri: url }}
-                  style={[
-                    styles.thumbnail,
-                    currentImageIndex === index && styles.activeThumbnail
-                  ]}
-                  resizeMode="cover"
-                />
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        )}
+        ))}
       </View>
     );
   };
 
   const renderDocuments = () => {
-    if (!post.document_urls || post.document_urls.length === 0) return null;
+    if (!postData?.document_urls || postData.document_urls.length === 0) return null;
 
     return (
       <View style={styles.documentsContainer}>
-        <Text style={styles.sectionTitle}>Documents</Text>
-        {post.document_urls.map((url, index) => (
-          <TouchableOpacity key={index} style={styles.documentItem}>
+        {postData.document_urls.map((url, index) => (
+          <TouchableOpacity key={index} style={styles.documentItem} onPress={() => Linking.openURL(url)}>
             <Ionicons name="document" size={20} color="#666" />
             <Text style={styles.documentText} numberOfLines={1}>
               {url.split('/').pop() || 'Document'}
             </Text>
-            <Ionicons name="download" size={20} color="#666" />
           </TouchableOpacity>
         ))}
       </View>
@@ -218,20 +216,16 @@ export default function PostDetail({ post, onBack, onLike, onComment, onShare }:
   };
 
   const renderContent = () => {
-    // Function to parse text for hashtags and links
+    if (!postData?.content) return null;
+
     const parseText = (text: string) => {
       const hashtagRegex = /#(\w+)/g;
       const urlRegex = /(https?:\/\/[^\s]+)/g;
-
-      // Split text by hashtags and URLs, then reconstruct with styling
       const parts = [];
       let lastIndex = 0;
-
-      // Find all hashtags and URLs
       const matches = [];
       let match;
 
-      // Find hashtags
       while ((match = hashtagRegex.exec(text)) !== null) {
         matches.push({
           type: 'hashtag',
@@ -242,7 +236,6 @@ export default function PostDetail({ post, onBack, onLike, onComment, onShare }:
         });
       }
 
-      // Find URLs
       while ((match = urlRegex.exec(text)) !== null) {
         matches.push({
           type: 'link',
@@ -253,16 +246,11 @@ export default function PostDetail({ post, onBack, onLike, onComment, onShare }:
         });
       }
 
-      // Reset regex lastIndex
       hashtagRegex.lastIndex = 0;
       urlRegex.lastIndex = 0;
-
-      // Sort matches by position
       matches.sort((a, b) => a.start - b.start);
 
-      // Build parts array
       matches.forEach((match) => {
-        // Add text before this match
         if (match.start > lastIndex) {
           parts.push({
             type: 'text',
@@ -270,13 +258,10 @@ export default function PostDetail({ post, onBack, onLike, onComment, onShare }:
             value: text.slice(lastIndex, match.start)
           });
         }
-
-        // Add the styled match
         parts.push(match);
         lastIndex = match.end;
       });
 
-      // Add remaining text
       if (lastIndex < text.length) {
         parts.push({
           type: 'text',
@@ -288,7 +273,7 @@ export default function PostDetail({ post, onBack, onLike, onComment, onShare }:
       return parts;
     };
 
-    const contentParts = parseText(post.content);
+    const contentParts = parseText(postData.content);
 
     return (
       <Text style={styles.content}>
@@ -298,10 +283,7 @@ export default function PostDetail({ post, onBack, onLike, onComment, onShare }:
               <Text
                 key={index}
                 style={styles.hashtag}
-                onPress={() => {
-                  // TODO: Navigate to hashtag search
-                  console.log('Hashtag pressed:', part.value);
-                }}
+                onPress={() => console.log('Hashtag pressed:', part.value)}
               >
                 {part.text}
               </Text>
@@ -311,9 +293,7 @@ export default function PostDetail({ post, onBack, onLike, onComment, onShare }:
               <Text
                 key={index}
                 style={styles.link}
-                onPress={() => {
-                  Linking.openURL(part.value);
-                }}
+                onPress={() => Linking.openURL(part.value)}
               >
                 {part.text}
               </Text>
@@ -327,97 +307,162 @@ export default function PostDetail({ post, onBack, onLike, onComment, onShare }:
   };
 
   const renderYouTubeEmbed = () => {
-    if (!post.youtube_url) return null;
+    if (!postData?.youtube_url) return null;
 
-    const videoId = post.youtube_url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/)?.[1];
-
+    const videoId = postData.youtube_url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/)?.[1];
     if (!videoId) return null;
 
     const thumbnailUrl = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
 
     return (
-      <View style={styles.youtubeContainer}>
-        <Text style={styles.sectionTitle}>Video</Text>
-        <TouchableOpacity style={styles.youtubeEmbed} onPress={() => {
-          if (post.youtube_url) {
-            Linking.openURL(post.youtube_url);
-          }
-        }}>
-          <Image source={{ uri: thumbnailUrl }} style={styles.youtubeThumbnail} resizeMode="cover" />
-          <View style={styles.youtubeOverlay}>
-            <View style={styles.youtubeControls}>
-              <TouchableOpacity style={styles.youtubeControlButton} onPress={() => {
-                if (post.youtube_url) {
-                  Linking.openURL(post.youtube_url);
-                }
-              }}>
-                <Ionicons name="play-circle" size={48} color="white" />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.youtubeControlButton} onPress={() => {
-                // TODO: Add share functionality
-                if (post.youtube_url) {
-                  console.log('Share YouTube video:', post.youtube_url);
-                }
-              }}>
-                <Ionicons name="share-social" size={24} color="white" />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.youtubeControlButton} onPress={() => {
-                // TODO: Add options menu
-                console.log('YouTube options');
-              }}>
-                <Ionicons name="ellipsis-horizontal" size={24} color="white" />
-              </TouchableOpacity>
+      <TouchableOpacity style={styles.youtubeContainer} onPress={() => {
+        if (postData.youtube_url) {
+          Linking.openURL(postData.youtube_url);
+        }
+      }}>
+        <Image source={{ uri: thumbnailUrl }} style={styles.youtubeThumbnail} resizeMode="cover" />
+        <View style={styles.youtubeOverlay}>
+          <View style={styles.youtubeControls}>
+            <TouchableOpacity style={styles.youtubeControlButton} onPress={() => {
+              if (postData.youtube_url) {
+                Linking.openURL(postData.youtube_url);
+              }
+            }}>
+              <Ionicons name="play-circle" size={48} color="white" />
+            </TouchableOpacity>
+          </View>
+        </View>
+        <Text style={styles.youtubeText}>YouTube Video</Text>
+      </TouchableOpacity>
+    );
+  };
+
+  // Render recent comments preview
+  const renderCommentsPreview = () => {
+    const recentComments = comments.slice(0, 3); // Show only 3 most recent comments
+
+    if (recentComments.length === 0) {
+      return (
+        <TouchableOpacity 
+          style={styles.noCommentsPreview} 
+          onPress={handleComment}
+        >
+          <Ionicons name="chatbubble-outline" size={20} color="#666" />
+          <Text style={styles.noCommentsPreviewText}>Be the first to comment</Text>
+        </TouchableOpacity>
+      );
+    }
+
+    return (
+      <View style={styles.commentsPreview}>
+        <View style={styles.commentsPreviewHeader}>
+          <Text style={styles.commentsPreviewTitle}>
+            Recent Comments ({commentsCount})
+          </Text>
+          <TouchableOpacity onPress={handleComment}>
+            <Text style={styles.viewAllText}>View all</Text>
+          </TouchableOpacity>
+        </View>
+        
+        {recentComments.map((comment) => (
+          <View key={comment.id} style={styles.commentPreviewItem}>
+            <Image
+              source={
+                comment.user?.profile_picture
+                  ? { uri: comment.user.profile_picture }
+                  : require('../../../assets/images/lub-karnataka.png')
+              }
+              style={styles.commentPreviewAvatar}
+            />
+            <View style={styles.commentPreviewContent}>
+              <Text style={styles.commentPreviewUserName}>
+                {comment.user?.name || 'Unknown User'}
+              </Text>
+              <Text style={styles.commentPreviewText} numberOfLines={2}>
+                {comment.content}
+              </Text>
+              <Text style={styles.commentPreviewTimestamp}>
+                {formatDate(comment.created_at)}
+              </Text>
             </View>
           </View>
-          <Text style={styles.youtubeText}>YouTube Video</Text>
-        </TouchableOpacity>
+        ))}
       </View>
     );
   };
 
+  if (!postData && !postId) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text>Loading post...</Text>
+      </View>
+    );
+  }
+
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#000" />
+    <ScrollView
+      style={styles.container}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
+          colors={['#AF2225']}
+        />
+      }
+    >
+      {/* Sponsored Badge */}
+      {postData?.sponsored && (
+        <View style={styles.sponsoredBadge}>
+          <Ionicons name="megaphone" size={14} color="#666" />
+          <Text style={styles.sponsoredText}>Sponsored</Text>
+        </View>
+      )}
 
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={onBack} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="white" />
-        </TouchableOpacity>
-        <View style={styles.headerContent}>
-          <Image
-            source={require('../../../assets/images/lub-karnataka.png')}
-            style={styles.headerAvatar}
-          />
-          <View>
-            <Text style={styles.headerUserName}>LUB</Text>
-            <Text style={styles.headerTimestamp}>{formatDate(post.created_at)}</Text>
-          </View>
+        <Image
+          source={require('../../../assets/images/lub-karnataka.png')}
+          style={styles.avatar}
+        />
+        <View style={styles.headerText}>
+          <Text style={styles.userName}>
+            {postData?.user?.name || 'LUB'}
+          </Text>
+          <Text style={styles.userDetails}>
+            {'Official Updates'}
+          </Text>
+          <Text style={styles.timestamp}>
+            {postData?.created_at ? formatDate(postData.created_at) : ''}
+          </Text>
         </View>
+        <TouchableOpacity style={styles.moreButton}>
+          <Ionicons name="ellipsis-horizontal" size={20} color="#666" />
+        </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Image Gallery */}
-        {renderImageGallery()}
+      {/* Content */}
+      {renderContent()}
 
-        {/* Post Content */}
-        <View style={styles.contentContainer}>
-          {post.sponsored && (
-            <View style={styles.sponsoredBadge}>
-              <Ionicons name="megaphone" size={14} color="#666" />
-              <Text style={styles.sponsoredText}>Sponsored</Text>
-            </View>
-          )}
+      {/* Media */}
+      {renderMedia()}
 
-          {renderContent()}
+      {/* YouTube */}
+      {renderYouTubeEmbed()}
 
-          {/* YouTube Video */}
-          {renderYouTubeEmbed()}
+      {/* Documents */}
+      {renderDocuments()}
 
-          {/* Documents */}
-          {renderDocuments()}
+      {/* Stats */}
+      <View style={styles.statsContainer}>
+        <View style={styles.statItem}>
+          <Ionicons name="thumbs-up" size={16} color="#666" />
+          <Text style={styles.statText}>{likesCount} likes</Text>
         </View>
-      </ScrollView>
+        <View style={styles.statItem}>
+          <Ionicons name="chatbubble" size={16} color="#666" />
+          <Text style={styles.statText}>{commentsCount} comments</Text>
+        </View>
+      </View>
 
       {/* Actions */}
       <View style={styles.actions}>
@@ -432,14 +477,14 @@ export default function PostDetail({ post, onBack, onLike, onComment, onShare }:
             color={isLiked ? "#AF2225" : "#666"}
           />
           <Text style={[styles.actionText, isLiked && styles.likedText]}>
-            {likesCount > 0 ? `${likesCount} Like${likesCount !== 1 ? 's' : ''}` : 'Like'}
+            Like
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.actionButton} onPress={handleComment}>
           <Ionicons name="chatbubble-outline" size={20} color="#666" />
           <Text style={styles.actionText}>
-            {commentsCount > 0 ? `${commentsCount} Comment${commentsCount !== 1 ? 's' : ''}` : 'Comment'}
+            Comment
           </Text>
         </TouchableOpacity>
 
@@ -449,188 +494,37 @@ export default function PostDetail({ post, onBack, onLike, onComment, onShare }:
         </TouchableOpacity>
       </View>
 
-      {/* Comment Modal */}
-      <Modal
-        visible={isCommentModalVisible}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setIsCommentModalVisible(false)}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => setIsCommentModalVisible(false)}
-            >
-              <Ionicons name="close" size={24} color="#1f2937" />
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>Add Comment</Text>
-            <TouchableOpacity
-              style={[styles.postButton, (!commentText.trim() || isCommentLoading) && styles.postButtonDisabled]}
-              onPress={handleAddComment}
-              disabled={!commentText.trim() || isCommentLoading}
-            >
-              <Text style={[styles.postButtonText, (!commentText.trim() || isCommentLoading) && styles.postButtonTextDisabled]}>
-                {isCommentLoading ? 'Posting...' : 'Post'}
-              </Text>
-            </TouchableOpacity>
-          </View>
+      {/* Comments Preview */}
+      {renderCommentsPreview()}
 
-          <View style={styles.commentInputContainer}>
-            <TextInput
-              style={styles.commentInput}
-              placeholder="Write a comment..."
-              value={commentText}
-              onChangeText={setCommentText}
-              multiline
-              maxLength={500}
-              autoFocus
-            />
-            <Text style={styles.charCount}>
-              {commentText.length}/500
-            </Text>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Comments Section */}
-      {comments && comments.length > 0 && (
-        <View style={styles.commentsSection}>
-          <Text style={styles.commentsTitle}>Comments ({comments.length})</Text>
-          {comments.map((comment) => (
-            <View key={comment.id} style={styles.commentItem}>
-              <Image
-                source={comment.user?.profile_picture ? { uri: comment.user.profile_picture } : require('../../../assets/images/lub-karnataka.png')}
-                style={styles.commentAvatar}
-              />
-              <View style={styles.commentContent}>
-                <View style={styles.commentHeader}>
-                  <Text style={styles.commentUserName}>
-                    {comment.user?.name || 'Unknown User'}
-                  </Text>
-                  <Text style={styles.commentTimestamp}>
-                    {formatDate(comment.created_at)}
-                  </Text>
-                </View>
-                <Text style={styles.commentText}>{comment.content}</Text>
-              </View>
-            </View>
-          ))}
-        </View>
-      )}
-    </SafeAreaView>
+      {/* Comment Section Modal */}
+      <CommentSection
+        postId={postData?.id || postId || ''}
+        isVisible={isCommentModalVisible}
+        onClose={() => setIsCommentModalVisible(false)}
+        comments={comments}
+        commentsCount={commentsCount}
+        onCommentsCountChange={setCommentsCount}
+        onCommentsChange={handleCommentsChange}
+        onCommentAdd={() => {
+          loadComments(); // Refresh comments after adding a new one
+          onComment?.();
+        }}
+      />
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: '#ffffff',
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    marginTop: 23,
-  },
-  backButton: {
-    padding: 8,
-    marginRight: 12,
-  },
-  headerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  loadingContainer: {
     flex: 1,
-  },
-  headerAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginRight: 12,
-  },
-  headerUserName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: 'white',
-    marginBottom: 2,
-  },
-  headerTimestamp: {
-    fontSize: 12,
-    color: '#ccc',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  imageGalleryContainer: {
-    position: 'relative',
-  },
-  fullScreenImage: {
-    width: width,
-    height: height * 0.6,
-  },
-  navButton: {
-    position: 'absolute',
-    top: '50%',
-    transform: [{ translateY: -25 }],
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    borderRadius: 25,
-    width: 50,
-    height: 50,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  leftButton: {
-    left: 16,
-  },
-  rightButton: {
-    right: 16,
-  },
-  imageCounter: {
-    position: 'absolute',
-    top: 16,
-    right: 16,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
-  counterText: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  thumbnailStrip: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-  },
-  thumbnailWrapper: {
-    marginRight: 8,
-  },
-  thumbnail: {
-    width: 60,
-    height: 60,
-    borderRadius: 4,
-    opacity: 0.6,
-  },
-  activeThumbnail: {
-    opacity: 1,
-    borderWidth: 2,
-    borderColor: 'white',
-  },
-  contentContainer: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    marginTop: -16,
-    padding: 16,
-    minHeight: height * 0.4,
+    backgroundColor: '#ffffff',
   },
   sponsoredBadge: {
     flexDirection: 'row',
@@ -641,6 +535,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignSelf: 'flex-start',
     marginBottom: 12,
+    marginHorizontal: 16,
+    marginTop: 16,
   },
   sponsoredText: {
     fontSize: 12,
@@ -648,11 +544,45 @@ const styles = StyleSheet.create({
     marginLeft: 4,
     fontWeight: '500',
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+    paddingHorizontal: 16,
+  },
+  avatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    marginRight: 12,
+  },
+  headerText: {
+    flex: 1,
+  },
+  userName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000',
+    marginBottom: 2,
+  },
+  userDetails: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 2,
+  },
+  timestamp: {
+    fontSize: 12,
+    color: '#999',
+  },
+  moreButton: {
+    padding: 4,
+  },
   content: {
     fontSize: 16,
     lineHeight: 24,
     color: '#333',
-    marginBottom: 16,
+    marginBottom: 12,
+    paddingHorizontal: 16,
   },
   hashtag: {
     color: '#1d4ed8',
@@ -663,23 +593,53 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     textDecorationLine: 'underline',
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
+  mediaContainer: {
     marginBottom: 12,
+    paddingHorizontal: 16,
+  },
+  singleImage: {
+    flexDirection: 'row',
+    marginBottom: 4,
+  },
+  twoImages: {
+    flexDirection: 'row',
+    marginBottom: 4,
+  },
+  imageWrapper: {
+    flex: 1,
+    marginHorizontal: 2,
+    position: 'relative',
+  },
+  gridImage: {
+    width: '100%',
+    height: 300, // Slightly larger for detail view
+    borderRadius: 8,
+  },
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 8,
+  },
+  overlayText: {
+    color: 'white',
+    fontSize: 24,
+    fontWeight: 'bold',
   },
   youtubeContainer: {
-    marginBottom: 16,
-  },
-  youtubeEmbed: {
+    marginBottom: 12,
     position: 'relative',
-    borderRadius: 8,
-    overflow: 'hidden',
+    paddingHorizontal: 16,
   },
   youtubeThumbnail: {
     width: '100%',
-    height: 200,
+    height: 250,
+    borderRadius: 8,
   },
   youtubeOverlay: {
     position: 'absolute',
@@ -690,6 +650,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    borderRadius: 8,
   },
   youtubeControls: {
     flexDirection: 'row',
@@ -713,7 +674,8 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   documentsContainer: {
-    marginBottom: 16,
+    marginBottom: 12,
+    paddingHorizontal: 16,
   },
   documentItem: {
     flexDirection: 'row',
@@ -729,14 +691,31 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     flex: 1,
   },
-  actions: {
+  statsContainer: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderTopWidth: 1,
     borderTopColor: '#f0f0f0',
-    paddingTop: 12,
-    paddingBottom: 24,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  statItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  statText: {
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 6,
+  },
+  actions: {
+    flexDirection: 'row',
     paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
   },
   actionButton: {
     flexDirection: 'row',
@@ -744,6 +723,8 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 16,
     marginRight: 16,
+    flex: 1,
+    justifyContent: 'center',
   },
   actionText: {
     fontSize: 14,
@@ -754,119 +735,70 @@ const styles = StyleSheet.create({
   likedText: {
     color: '#AF2225',
   },
-  // Modal styles
-  modalContainer: {
-    flex: 1,
-    backgroundColor: '#f8f9fa',
+  commentsPreview: {
+    padding: 16,
   },
-  modalHeader: {
+  commentsPreviewHeader: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    paddingTop: 50, // Account for status bar
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    marginBottom: 12,
   },
-  closeButton: {
-    padding: 4,
-  },
-  modalTitle: {
-    flex: 1,
-    fontSize: 18,
+  commentsPreviewTitle: {
+    fontSize: 16,
     fontWeight: '600',
     color: '#1f2937',
-    textAlign: 'center',
   },
-  postButton: {
-    backgroundColor: '#AF2225',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
-  },
-  postButtonDisabled: {
-    backgroundColor: '#e5e7eb',
-  },
-  postButtonText: {
-    color: '#ffffff',
+  viewAllText: {
     fontSize: 14,
-    fontWeight: '600',
+    color: '#AF2225',
+    fontWeight: '500',
   },
-  postButtonTextDisabled: {
-    color: '#9ca3af',
-  },
-  commentInputContainer: {
-    flex: 1,
-    padding: 20,
-  },
-  commentInput: {
-    backgroundColor: '#ffffff',
-    borderRadius: 8,
-    padding: 16,
-    fontSize: 16,
-    minHeight: 120,
-    textAlignVertical: 'top',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  charCount: {
-    fontSize: 12,
-    color: '#9ca3af',
-    textAlign: 'right',
-    marginTop: 8,
-  },
-  // Comments section styles
-  commentsSection: {
-    backgroundColor: '#ffffff',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-  },
-  commentsTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 16,
-  },
-  commentItem: {
+  commentPreviewItem: {
     flexDirection: 'row',
     marginBottom: 16,
   },
-  commentAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    marginRight: 12,
-  },
-  commentContent: {
-    flex: 1,
-  },
-  commentHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  commentUserName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#111827',
+  commentPreviewAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     marginRight: 8,
   },
-  commentTimestamp: {
-    fontSize: 12,
-    color: '#9ca3af',
+  commentPreviewContent: {
+    flex: 1,
+    backgroundColor: '#f8f9fa',
+    padding: 12,
+    borderRadius: 8,
   },
-  commentText: {
+  commentPreviewUserName: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#1f2937',
+    marginBottom: 4,
+  },
+  commentPreviewText: {
     fontSize: 14,
-    color: '#4b5563',
-    lineHeight: 20,
+    color: '#374151',
+    lineHeight: 18,
+    marginBottom: 4,
+  },
+  commentPreviewTimestamp: {
+    fontSize: 11,
+    color: '#6b7280',
+  },
+  noCommentsPreview: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    marginHorizontal: 16,
+    marginVertical: 8,
+  },
+  noCommentsPreviewText: {
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 8,
   },
 });
