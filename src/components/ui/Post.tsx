@@ -377,7 +377,7 @@ export default function Post({ post, onLike, onComment, onShare }: PostProps) {
               LUB
             </Text>
             <Text style={styles.userDetails}>
-              Official Updates
+              {post.post_type ? post.post_type.charAt(0).toUpperCase() + post.post_type.slice(1) : 'Official Updates'}
             </Text>
             <Text style={styles.timestamp}>{formatDate(post.created_at)}</Text>
           </View>

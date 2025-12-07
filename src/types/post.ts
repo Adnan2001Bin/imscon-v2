@@ -5,6 +5,7 @@ export interface Post {
   document_urls?: string[];
   youtube_url?: string;
   sponsored?: boolean;
+  post_type?: string;
   created_by: string;
   created_at: string;
   updated_at: string;
