@@ -1,23 +1,25 @@
+import { MaterialIcons } from '@expo/vector-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { LinearGradient } from 'expo-linear-gradient';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as ImagePicker from 'expo-image-picker';
 import { ArrowRight, Save } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import {
-    ActivityIndicator,
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../lib/supabase';
 import queryKeys from '../constants/queryKeys';
-import MobileHeader from '../MobileHeader';
 import { completeProfileScreenStyles as styles } from '../styles/CompleteProfileScreen.styles';
 
 // Types
@@ -119,6 +121,8 @@ export default function CompleteProfileScreen({ onProfileComplete, onLogout }: C
   const [activeTab, setActiveTab] = useState<'individual' | 'company'>('individual');
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isSavingCompany, setIsSavingCompany] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(user?.profile_picture ?? null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   // Get existing company data if it exists (only for exhibitors with company_id)
   const shouldFetchCompany = !!(user?.company_id && user?.role === 'exhibitor')
@@ -140,6 +144,10 @@ export default function CompleteProfileScreen({ onProfileComplete, onLogout }: C
     },
     enabled: shouldFetchCompany,
   })
+
+  useEffect(() => {
+    setSelectedImage(user?.profile_picture ?? null)
+  }, [user?.profile_picture])
 
   // Show error if company data fetch fails
   useEffect(() => {
@@ -202,6 +210,8 @@ export default function CompleteProfileScreen({ onProfileComplete, onLogout }: C
     },
   })
 
+  const shouldShowCompanyFields = user?.role === 'attendee' || user?.role === 'participant' || user?.role === 'visitor'
+
   // Update form values when company data loads (for existing companies)
   useEffect(() => {
     if (companyData && user?.role === 'exhibitor') {
@@ -219,6 +229,111 @@ export default function CompleteProfileScreen({ onProfileComplete, onLogout }: C
       })
     }
   }, [companyData, companyForm, user?.role])
+
+  const requestPermissions = async () => {
+    const { status: cameraStatus } = await ImagePicker.requestCameraPermissionsAsync()
+    const { status: libraryStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync()
+
+    if (cameraStatus !== 'granted' || libraryStatus !== 'granted') {
+      Alert.alert(
+        'Permissions required',
+        'Camera and photo library permissions are required to upload a profile photo.',
+        [{ text: 'OK' }],
+      )
+      return false
+    }
+    return true
+  }
+
+  const pickImageFromGallery = async () => {
+    const hasPermission = await requestPermissions()
+    if (!hasPermission) return
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    })
+
+    if (!result.canceled && result.assets[0]) {
+      setSelectedImage(result.assets[0].uri)
+    }
+  }
+
+  const takePhotoWithCamera = async () => {
+    const hasPermission = await requestPermissions()
+    if (!hasPermission) return
+
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    })
+
+    if (!result.canceled && result.assets[0]) {
+      setSelectedImage(result.assets[0].uri)
+    }
+  }
+
+  const handleImageSelection = () => {
+    Alert.alert(
+      'Profile photo',
+      'Choose a source',
+      [
+        { text: 'Camera', onPress: takePhotoWithCamera },
+        { text: 'Gallery', onPress: pickImageFromGallery },
+        { text: 'Cancel', style: 'cancel' },
+      ],
+    )
+  }
+
+  const handleRemoveImage = () => {
+    setSelectedImage(null)
+  }
+
+  const uploadImage = async (imageUri: string): Promise<string | null> => {
+    try {
+      setIsUploadingImage(true)
+
+      const base64 = await FileSystem.readAsStringAsync(imageUri, {
+        encoding: FileSystem.EncodingType.Base64,
+      })
+
+      const arrayBuffer = new Uint8Array(
+        atob(base64)
+          .split('')
+          .map(char => char.charCodeAt(0)),
+      )
+
+      const fileName = `profile-${user?.id}-${Date.now()}.jpg`
+
+      const { data, error } = await supabase.storage
+        .from('profile-photos')
+        .upload(fileName, arrayBuffer, {
+          contentType: 'image/jpeg',
+          upsert: true,
+        })
+
+      if (error) {
+        console.error('Supabase storage error:', error)
+        Alert.alert('Upload failed', error.message ?? 'Unable to upload image right now.')
+        return null
+      }
+
+      const { data: publicUrl } = supabase.storage
+        .from('profile-photos')
+        .getPublicUrl(fileName)
+
+      return publicUrl.publicUrl
+    } catch (error: any) {
+      console.error('Image upload error:', error)
+      Alert.alert('Upload failed', error.message ?? 'Unable to upload image.')
+      return null
+    } finally {
+      setIsUploadingImage(false)
+    }
+  }
 
   const handleSaveProfile = async (formData: EssentialProfileForm) => {
     if (!user?.id) return
@@ -275,6 +390,28 @@ export default function CompleteProfileScreen({ onProfileComplete, onLogout }: C
     setIsSavingProfile(true)
 
     try {
+      let profilePictureUrl = user?.profile_picture ?? null
+      let imageUploadSuccess = true
+
+      if (selectedImage) {
+        if (selectedImage.startsWith('http')) {
+          profilePictureUrl = selectedImage
+        } else {
+          const uploadedUrl = await uploadImage(selectedImage)
+            if (uploadedUrl) {
+              profilePictureUrl = uploadedUrl
+            } else {
+              imageUploadSuccess = false
+            }
+        }
+      } else if (!selectedImage && user?.profile_picture) {
+        profilePictureUrl = null
+      }
+
+      if (!imageUploadSuccess) {
+        return
+      }
+
       // Convert form data to match the expected API format
       const updateData = {
         id: user.id,
@@ -290,7 +427,7 @@ export default function CompleteProfileScreen({ onProfileComplete, onLogout }: C
         company: formData.company && formData.company.trim() !== '' ? formData.company : null,
         industry: formData.industry && formData.industry.trim() !== '' ? formData.industry : null,
         about: null,
-        profile_picture: null,
+        profile_picture: profilePictureUrl,
         zip_code: null, // Add this field that's in the schema but not in the form
       }
 
@@ -501,178 +638,141 @@ export default function CompleteProfileScreen({ onProfileComplete, onLogout }: C
 
   return (
     <View style={styles.container}>
-      <MobileHeader
-        showCompactMode={true}
-        onLogout={onLogout}
-      />
-      <LinearGradient colors={["#fef2f2", "#fee2e2"]} style={styles.gradient}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.keyboardAvoidingView}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 24}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardAvoidingView}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 24}
+      >
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
         >
-          <ScrollView
-            style={styles.scrollView}
-            contentContainerStyle={styles.scrollContent}
-            keyboardShouldPersistTaps="handled"
-          >
-            {/* Header */}
-            <View style={styles.header}>
+          {/* Header */}
+          <View style={styles.header}>
+            <View style={styles.headerRow}>
               <Text style={styles.headerTitle}>
                 Complete Your Profile
               </Text>
-              <Text style={styles.headerSubtitle}>
-                Complete your profile information to access the app and connect with other attendees
+              {onLogout && (
+                <TouchableOpacity style={styles.logoutButton} onPress={onLogout}>
+                  <MaterialIcons name="logout" size={16} color="#0f172a" />
+                  <Text style={styles.logoutButtonText}>Log out</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+            <Text style={styles.headerSubtitle}>
+              Finish onboarding to unlock the community experience.
+            </Text>
+          </View>
+
+          {/* Progress */}
+          <View style={styles.progressContainer}>
+            <View style={styles.progressHeader}>
+              <Text style={styles.progressLabel}>Progress</Text>
+              <Text style={styles.progressCount}>
+                {progress.completed}/{progress.total} completed
               </Text>
             </View>
-
-            {/* Progress */}
-            <View style={styles.progressContainer}>
-              <View style={styles.progressHeader}>
-                <Text style={styles.progressLabel}>Progress</Text>
-                <Text style={styles.progressCount}>
-                  {progress.completed}/{progress.total} completed
-                </Text>
-              </View>
-              <View style={styles.progressBar}>
-                <View style={[styles.progressFill, { width: `${progress.percentage}%` }]} />
-              </View>
+            <View style={styles.progressBar}>
+              <View style={[styles.progressFill, { width: `${progress.percentage}%` }]} />
             </View>
+          </View>
 
-            {/* Profile Form */}
-            <View style={styles.formCard}>
-              {user?.role === 'exhibitor' ? (
-                /* Tabs for Exhibitor Users */
-                <>
-                  {/* Tab Header */}
-                  <View style={styles.tabHeader}>
-                    <Text style={styles.tabTitle}>
-                      Complete Your Profile
+          {/* Profile Form */}
+          <View style={styles.formCard}>
+            {user?.role === 'exhibitor' ? (
+              <>
+                <View style={styles.tabHeader}>
+                  <Text style={styles.tabTitle}>
+                    Complete Your Profile
+                  </Text>
+                  <Text style={styles.tabSubtitle}>
+                    Both individual and company profiles are required to access the app
+                  </Text>
+                </View>
+
+                <View style={styles.tabContainer}>
+                  <TouchableOpacity
+                    style={[
+                      styles.tab,
+                      activeTab === 'individual' && styles.activeTab
+                    ]}
+                    onPress={() => setActiveTab('individual')}
+                  >
+                    <Text style={[
+                      styles.tabText,
+                      activeTab === 'individual' ? styles.activeTabText : styles.inactiveTabText
+                    ]}>
+                      Individual Profile
                     </Text>
-                    <Text style={styles.tabSubtitle}>
-                      Both individual and company profiles are required to access the app
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.tab,
+                      activeTab === 'company' && styles.activeTab
+                    ]}
+                    onPress={() => setActiveTab('company')}
+                  >
+                    <Text style={[
+                      styles.tabText,
+                      activeTab === 'company' ? styles.activeTabText : styles.inactiveTabText
+                    ]}>
+                      Company Profile
                     </Text>
-                  </View>
+                  </TouchableOpacity>
+                </View>
 
-                  {/* Tab Status */}
-                  <View style={styles.tabStatusContainer}>
-                    <View style={styles.tabStatusItem}>
-                      <Text style={[
-                        styles.tabStatusLabel,
-                        { color: user?.profile_completed ? '#059669' : '#DC2626' }
-                      ]}>
-                        Individual Profile
-                      </Text>
-                      <View style={[
-                        styles.tabStatusBadge,
-                        { backgroundColor: user?.profile_completed ? '#ECFDF5' : '#FEF2F2' }
-                      ]}>
-                        <Text style={[
-                          styles.tabStatusText,
-                          { color: user?.profile_completed ? '#059669' : '#DC2626' }
-                        ]}>
-                          {user?.profile_completed ? 'Complete' : 'Incomplete'}
-                        </Text>
-                      </View>
-                    </View>
-                    <View style={styles.tabStatusItem}>
-                      <Text style={[
-                        styles.tabStatusLabel,
-                        { color: user?.company_profile_completed ? '#059669' : '#DC2626' }
-                      ]}>
-                        Company Profile
-                      </Text>
-                      <View style={[
-                        styles.tabStatusBadge,
-                        { backgroundColor: user?.company_profile_completed ? '#ECFDF5' : '#FEF2F2' }
-                      ]}>
-                        <Text style={[
-                          styles.tabStatusText,
-                          { color: user?.company_profile_completed ? '#059669' : '#DC2626' }
-                        ]}>
-                          {user?.company_profile_completed ? 'Complete' : 'Incomplete'}
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-
-                  {/* Tab Buttons */}
-                  <View style={styles.tabContainer}>
-                    <TouchableOpacity
-                      style={[
-                        styles.tab,
-                        activeTab === 'individual' && styles.activeTab
-                      ]}
-                      onPress={() => setActiveTab('individual')}
-                    >
-                      <Text style={[
-                        styles.tabText,
-                        activeTab === 'individual' ? styles.activeTabText : styles.inactiveTabText
-                      ]}>
-                        Individual Profile
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[
-                        styles.tab,
-                        activeTab === 'company' && styles.activeTab
-                      ]}
-                      onPress={() => setActiveTab('company')}
-                    >
-                      <Text style={[
-                        styles.tabText,
-                        activeTab === 'company' ? styles.activeTabText : styles.inactiveTabText
-                      ]}>
-                        Company Profile
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  {/* Tab Content */}
-                  {activeTab === 'individual' ? (
-                    <IndividualProfileForm
-                      form={individualForm}
-                      onSubmit={handleSaveProfile}
-                      isSubmitting={isSavingProfile}
-                      user={user}
-                      activeTab={activeTab}
-                    />
-                  ) : (
-                    <CompanyProfileForm
-                      form={companyForm}
-                      onSubmit={handleSaveCompanyProfile}
-                      isSubmitting={isSavingCompany}
-                      user={user}
-                      activeTab={activeTab}
-                    />
-                  )}
-                </>
-              ) : (
-                /* Single Form for Non-Exhibitor Users */
-                <>
-                  <View style={styles.tabHeader}>
-                    <Text style={styles.tabTitle}>
-                      Profile Setup
-                    </Text>
-                    <Text style={styles.tabSubtitle}>
-                      Individual profile is required to access the app
-                    </Text>
-                  </View>
-
+                {activeTab === 'individual' ? (
                   <IndividualProfileForm
                     form={individualForm}
                     onSubmit={handleSaveProfile}
                     isSubmitting={isSavingProfile}
                     user={user}
                     activeTab={activeTab}
-                    showCompanyFields={user?.role === 'attendee' || user?.role === 'participant' || user?.role === 'visitor'}
+                    selectedImage={selectedImage}
+                    onSelectImage={handleImageSelection}
+                    onRemoveImage={handleRemoveImage}
+                    isUploadingImage={isUploadingImage}
                   />
-                </>
-              )}
-            </View>
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </LinearGradient>
+                ) : (
+                  <CompanyProfileForm
+                    form={companyForm}
+                    onSubmit={handleSaveCompanyProfile}
+                    isSubmitting={isSavingCompany}
+                    user={user}
+                    activeTab={activeTab}
+                  />
+                )}
+              </>
+            ) : (
+              <>
+                <View style={styles.tabHeader}>
+                  <Text style={styles.tabTitle}>
+                    Profile Setup
+                  </Text>
+                  <Text style={styles.tabSubtitle}>
+                    Individual profile is required to access the app
+                  </Text>
+                </View>
+
+                <IndividualProfileForm
+                  form={individualForm}
+                  onSubmit={handleSaveProfile}
+                  isSubmitting={isSavingProfile}
+                  user={user}
+                  activeTab={activeTab}
+                  showCompanyFields={shouldShowCompanyFields}
+                  selectedImage={selectedImage}
+                  onSelectImage={handleImageSelection}
+                  onRemoveImage={handleRemoveImage}
+                  isUploadingImage={isUploadingImage}
+                />
+              </>
+            )}
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   )
 }
@@ -684,7 +784,11 @@ function IndividualProfileForm({
   isSubmitting,
   user,
   showCompanyFields = false,
-  activeTab
+  activeTab,
+  selectedImage,
+  onSelectImage,
+  onRemoveImage,
+  isUploadingImage,
 }: {
   form: any
   onSubmit: (data: EssentialProfileForm) => void
@@ -692,7 +796,50 @@ function IndividualProfileForm({
   user: any
   showCompanyFields?: boolean
   activeTab?: 'individual' | 'company'
+  selectedImage: string | null
+  onSelectImage: () => void
+  onRemoveImage: () => void
+  isUploadingImage: boolean
 }) {
+  const renderInput = (
+    name: keyof EssentialProfileForm,
+    label: string,
+    placeholder: string,
+    icon: string,
+    multiline = false,
+    numberOfLines = 1
+  ) => (
+    <View style={styles.inputGroup}>
+      <Text style={styles.label}>{label}</Text>
+      <View style={[
+        styles.inputWrapper,
+        form.formState.errors[name] && styles.inputWrapperError,
+      ]}>
+        <MaterialIcons name={icon as any} size={16} color="#6B7280" style={styles.inputIcon} />
+        <Controller
+          control={form.control}
+          name={name}
+          render={({ field: { onChange, value } }) => (
+            <TextInput
+              style={[styles.input, multiline && styles.multilineInput]}
+              placeholder={placeholder}
+              placeholderTextColor="#9CA3AF"
+              value={value}
+              onChangeText={onChange}
+              multiline={multiline}
+              numberOfLines={numberOfLines}
+              textAlignVertical={multiline ? 'top' : 'center'}
+            />
+          )}
+        />
+      </View>
+      {form.formState.errors[name] && (
+        <Text style={styles.errorText}>
+          {form.formState.errors[name]?.message}
+        </Text>
+      )}
+    </View>
+  );
   // Determine button text and icon based on user role and current tab
   const getButtonProps = () => {
     // If exhibitor on the individual tab, prompt to continue to company profile
@@ -712,264 +859,141 @@ function IndividualProfileForm({
   const buttonProps = getButtonProps()
 
   return (
-    <View>
-      <View style={styles.inputRow}>
-        <View style={styles.inputFullWidth}>
-          <Text style={styles.label}>Full Name *</Text>
-          <Controller
-            control={form.control}
-            name="name"
-            render={({ field: { onChange, value } }: { field: ControllerFieldProps }) => (
-              <TextInput
-                style={[
-                  styles.input,
-                  form.formState.errors.name && styles.inputError
-                ]}
-                placeholder="John Doe"
-                value={value}
-                onChangeText={onChange}
-              />
+    <View style={styles.formContent}>
+      <View style={styles.photoSection}>
+        {selectedImage ? (
+          <Image source={{ uri: selectedImage }} style={styles.photoImage} />
+        ) : (
+          <View style={styles.photoPlaceholder}>
+            <MaterialIcons name="person" size={40} color="#9CA3AF" />
+          </View>
+        )}
+        <View style={styles.photoButtonsRow}>
+          <TouchableOpacity
+            style={styles.photoButton}
+            onPress={onSelectImage}
+            disabled={isUploadingImage || isSubmitting}
+          >
+            {isUploadingImage ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.photoButtonText}>Upload photo</Text>
             )}
-          />
-          {form.formState.errors.name && (
-            <Text style={styles.errorText}>
-              {form.formState.errors.name.message}
-            </Text>
+          </TouchableOpacity>
+          {selectedImage && (
+            <TouchableOpacity
+              style={styles.photoSecondaryButton}
+              onPress={onRemoveImage}
+              disabled={isUploadingImage || isSubmitting}
+            >
+              <Text style={styles.photoSecondaryButtonText}>Remove</Text>
+            </TouchableOpacity>
           )}
         </View>
+        <Text style={styles.photoHint}>Square images look best. Max size 2 MB.</Text>
+      </View>
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Personal details</Text>
+        {renderInput('name', 'Full Name *', 'John Doe', 'person')}
+        {renderInput('designation', 'Job Title *', 'Managing Director', 'work')}
       </View>
 
-      <View style={styles.inputRow}>
-        <View style={styles.inputFullWidth}>
-          <Text style={styles.label}>Designation/Role *</Text>
-          <Controller
-            control={form.control}
-            name="designation"
-            render={({ field: { onChange, value } }: { field: ControllerFieldProps }) => (
-              <TextInput
-                style={[
-                  styles.input,
-                  form.formState.errors.designation && styles.inputError
-                ]}
-                placeholder="Managing Director"
-                value={value}
-                onChangeText={onChange}
-              />
-            )}
-          />
-          {form.formState.errors.designation && (
-            <Text style={styles.errorText}>
-              {form.formState.errors.designation.message}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Contact preference</Text>
+        {renderInput('phone', 'Phone Number *', '+91 9876543210', 'phone')}
+        {renderInput('linkedin', 'LinkedIn Profile', 'linkedin.com/in/johndoe', 'link')}
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Location & organization</Text>
+        {renderInput('address', 'Address', 'Plot No. 14, Peenya Industrial Area', 'location-on')}
+        {renderInput('city', 'City *', 'Bengaluru', 'location-city')}
+        {renderInput('country', 'Country *', 'India', 'flag')}
+
+        {showCompanyFields && (
+          <View style={styles.companySection}>
+            <Text style={styles.companyTitle}>
+              Company Information
             </Text>
-          )}
-        </View>
-      </View>
 
-      <View style={styles.inputRow}>
-        <View style={styles.inputFullWidth}>
-          <Text style={styles.label}>Phone Number *</Text>
-          <Controller
-            control={form.control}
-            name="phone"
-            render={({ field: { onChange, value } }: { field: ControllerFieldProps }) => (
-              <TextInput
-                style={[
-                  styles.input,
-                  form.formState.errors.phone && styles.inputError
-                ]}
-                placeholder="+91 9876543210"
-                value={value}
-                onChangeText={onChange}
-                keyboardType="phone-pad"
-              />
-            )}
-          />
-          {form.formState.errors.phone && (
-            <Text style={styles.errorText}>
-              {form.formState.errors.phone.message}
-            </Text>
-          )}
-        </View>
-      </View>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Company Name *</Text>
+              <View style={[
+                styles.inputWrapper,
+                form.formState.errors.company && styles.inputWrapperError,
+              ]}>
+                <MaterialIcons name="business" size={20} color="#6B7280" style={styles.inputIcon} />
+                <Controller
+                  control={form.control}
+                  name="company"
+                  render={({ field: { onChange, value } }) => (
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Company Name"
+                      placeholderTextColor="#9CA3AF"
+                      value={value}
+                      onChangeText={onChange}
+                      editable={!user?.company}
+                    />
+                  )}
+                />
+              </View>
+              {user?.company && (
+                <Text style={styles.helperText}>
+                  Auto-filled from your existing profile
+                </Text>
+              )}
+              {form.formState.errors.company && (
+                <Text style={styles.errorText}>
+                  {form.formState.errors.company.message}
+                </Text>
+              )}
+            </View>
 
-      <View style={styles.inputRow}>
-        <View style={styles.inputFullWidth}>
-          <Text style={styles.label}>LinkedIn Profile</Text>
-          <Controller
-            control={form.control}
-            name="linkedin"
-            render={({ field: { onChange, value } }: { field: ControllerFieldProps }) => (
-              <TextInput
-                style={[
-                  styles.input,
-                  form.formState.errors.linkedin && styles.inputError
-                ]}
-                placeholder="linkedin.com/in/johndoe"
-                value={value}
-                onChangeText={onChange}
-                autoCapitalize="none"
-              />
-            )}
-          />
-          {form.formState.errors.linkedin && (
-            <Text style={styles.errorText}>
-              {form.formState.errors.linkedin.message}
-            </Text>
-          )}
-        </View>
-      </View>
-
-      <View style={styles.inputContainer}>
-        <Text style={styles.label}>Address</Text>
-        <Controller
-          control={form.control}
-          name="address"
-          render={({ field: { onChange, value } }: { field: ControllerFieldProps }) => (
-            <TextInput
-              style={[
-                styles.input,
-                form.formState.errors.address && styles.inputError
-              ]}
-              placeholder="Plot No. 14, Peenya Industrial Area"
-              value={value}
-              onChangeText={onChange}
-            />
-          )}
-        />
-        {form.formState.errors.address && (
-          <Text style={styles.errorText}>
-            {form.formState.errors.address.message}
-          </Text>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Industry *</Text>
+              <View style={[
+                styles.inputWrapper,
+                form.formState.errors.industry && styles.inputWrapperError,
+              ]}>
+                <MaterialIcons name="business-center" size={20} color="#6B7280" style={styles.inputIcon} />
+                <Controller
+                  control={form.control}
+                  name="industry"
+                  render={({ field: { onChange, value } }) => (
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Technology"
+                      placeholderTextColor="#9CA3AF"
+                      value={value}
+                      onChangeText={onChange}
+                    />
+                  )}
+                />
+              </View>
+              {form.formState.errors.industry && (
+                <Text style={styles.errorText}>
+                  {form.formState.errors.industry.message}
+                </Text>
+              )}
+            </View>
+          </View>
         )}
       </View>
 
-      <View style={styles.inputRow}>
-        <View style={styles.inputFullWidth}>
-          <Text style={styles.label}>City *</Text>
-          <Controller
-            control={form.control}
-            name="city"
-            render={({ field: { onChange, value } }: { field: ControllerFieldProps }) => (
-              <TextInput
-                style={[
-                  styles.input,
-                  form.formState.errors.city && styles.inputError
-                ]}
-                placeholder="Bengaluru"
-                value={value}
-                onChangeText={onChange}
-              />
-            )}
-          />
-          {form.formState.errors.city && (
-            <Text style={styles.errorText}>
-              {form.formState.errors.city.message}
-            </Text>
-          )}
-        </View>
-      </View>
-
-      <View style={styles.inputRow}>
-        <View style={styles.inputFullWidth}>
-          <Text style={styles.label}>Country *</Text>
-          <Controller
-            control={form.control}
-            name="country"
-            render={({ field: { onChange, value } }: { field: ControllerFieldProps }) => (
-              <TextInput
-                style={[
-                  styles.input,
-                  form.formState.errors.country && styles.inputError
-                ]}
-                placeholder="India"
-                value={value}
-                onChangeText={onChange}
-              />
-            )}
-          />
-          {form.formState.errors.country && (
-            <Text style={styles.errorText}>
-              {form.formState.errors.country.message}
-            </Text>
-          )}
-        </View>
-      </View>
-
-      {showCompanyFields && (
-        <View style={styles.companySection}>
-          <Text style={styles.companyTitle}>
-            Company Information
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Account email</Text>
+        <View style={styles.emailContainer}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+            <Text style={styles.emailLabel}>Email Address *</Text>
+          </View>
+          <Text style={styles.emailText}>
+            {user?.email}
           </Text>
-
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Company Name *</Text>
-            <Controller
-              control={form.control}
-              name="company"
-              render={({ field: { onChange, value } }: { field: ControllerFieldProps }) => (
-                <TextInput
-                  style={[
-                    styles.input,
-                    form.formState.errors.company && styles.inputError,
-                    { backgroundColor: user?.company ? '#F9FAFB' : 'white' }
-                  ]}
-                  placeholder="Company Name"
-                  value={value}
-                  onChangeText={onChange}
-                  editable={!user?.company}
-                />
-              )}
-            />
-            {user?.company && (
-              <Text style={styles.helperText}>
-                Auto-filled from profile
-              </Text>
-            )}
-            {form.formState.errors.company && (
-              <Text style={styles.errorText}>
-                {form.formState.errors.company.message}
-              </Text>
-            )}
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Industry *</Text>
-            <Controller
-              control={form.control}
-              name="industry"
-              render={({ field: { onChange, value } }: { field: ControllerFieldProps }) => (
-                <TextInput
-                  style={[
-                    styles.input,
-                    form.formState.errors.industry && styles.inputError
-                  ]}
-                  placeholder="Technology"
-                  value={value}
-                  onChangeText={onChange}
-                />
-              )}
-            />
-            {form.formState.errors.industry && (
-              <Text style={styles.errorText}>
-                {form.formState.errors.industry.message}
-              </Text>
-            )}
-          </View>
+          <Text style={styles.emailNote}>Email cannot be changed</Text>
         </View>
-      )}
-
-      {/* Email Display (read-only) */}
-      <View style={styles.emailContainer}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-          <Text style={styles.emailLabel}>Email Address *</Text>
-        </View>
-        <Text style={styles.emailText}>
-          {user?.email}
-        </Text>
-        <Text style={styles.emailNote}>Email cannot be changed</Text>
       </View>
 
-      {/* Action Button */}
       <TouchableOpacity
         style={[
           styles.primaryButton,
@@ -985,7 +1009,7 @@ function IndividualProfileForm({
             <Text style={styles.primaryButtonText}>
               {buttonProps.text}
             </Text>
-            <buttonProps.icon size={20} color="#ffffff" />
+            <buttonProps.icon size={16} color="#ffffff" />
           </View>
         )}
       </TouchableOpacity>
@@ -1007,272 +1031,70 @@ function CompanyProfileForm({
   user: any
   activeTab?: 'individual' | 'company'
 }) {
+  const renderInput = (
+    name: keyof EssentialCompanyForm,
+    label: string,
+    placeholder: string,
+    icon: string,
+    multiline = false,
+    numberOfLines = 1
+  ) => (
+    <View style={styles.inputGroup}>
+      <Text style={styles.label}>{label}</Text>
+      <View style={[
+        styles.inputWrapper,
+        form.formState.errors[name] && styles.inputWrapperError,
+      ]}>
+        <MaterialIcons name={icon as any} size={16} color="#6B7280" style={styles.inputIcon} />
+          <Controller
+            control={form.control}
+          name={name}
+          render={({ field: { onChange, value } }) => (
+              <TextInput
+              style={[styles.input, multiline && styles.multilineInput]}
+              placeholder={placeholder}
+                placeholderTextColor="#9CA3AF"
+                value={value}
+                onChangeText={onChange}
+              multiline={multiline}
+              numberOfLines={numberOfLines}
+              textAlignVertical={multiline ? 'top' : 'center'}
+              />
+            )}
+          />
+        </View>
+      {form.formState.errors[name] && (
+            <Text style={styles.errorText}>
+          {form.formState.errors[name]?.message}
+            </Text>
+          )}
+        </View>
+  );
+
   return (
-    <View>
-      <View style={styles.inputRow}>
-        <View style={styles.inputFullWidth}>
-          <Text style={styles.label}>Company Name *</Text>
-          <Controller
-            control={form.control}
-            name="name"
-            render={({ field: { onChange, value } }: { field: ControllerFieldProps }) => (
-              <TextInput
-                style={[
-                  styles.input,
-                  form.formState.errors.name && styles.inputError
-                ]}
-                placeholder="MedTech Innovations"
-                value={value}
-                onChangeText={onChange}
-              />
-            )}
-          />
-          {form.formState.errors.name && (
-            <Text style={styles.errorText}>
-              {form.formState.errors.name.message}
-            </Text>
-          )}
-        </View>
+    <View style={styles.formContent}>
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Company basics</Text>
+        {renderInput('name', 'Company Name *', 'MedTech Innovations', 'business')}
+        {renderInput('email', 'Contact Email *', 'info@medtech-innovations.com', 'email')}
+        {renderInput('phone', 'Contact Phone *', '+91 9876543210', 'phone')}
+        {renderInput('website', 'Website', 'medtech-innovations.com', 'link')}
       </View>
 
-      <View style={styles.inputRow}>
-        <View style={styles.inputFullWidth}>
-          <Text style={styles.label}>Contact Email *</Text>
-          <Controller
-            control={form.control}
-            name="email"
-            render={({ field: { onChange, value } }: { field: ControllerFieldProps }) => (
-              <TextInput
-                style={[
-                  styles.input,
-                  form.formState.errors.email && styles.inputError
-                ]}
-                placeholder="info@medtech-innovations.com"
-                value={value}
-                onChangeText={onChange}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-            )}
-          />
-          {form.formState.errors.email && (
-            <Text style={styles.errorText}>
-              {form.formState.errors.email.message}
-            </Text>
-          )}
-        </View>
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Presence at IMSCON</Text>
+        {renderInput('booth_number', 'Booth Number', 'B-205', 'location-on')}
+        {renderInput('hall', 'Hall', 'Hall B', 'location-city')}
+        {renderInput('address', 'Address', '456 Innovation Blvd', 'location-on')}
+        {renderInput('city', 'City *', 'Boston', 'location-city')}
+        {renderInput('country', 'Country *', 'USA', 'flag')}
       </View>
 
-      <View style={styles.inputRow}>
-        <View style={styles.inputFullWidth}>
-          <Text style={styles.label}>Contact Phone *</Text>
-          <Controller
-            control={form.control}
-            name="phone"
-            render={({ field: { onChange, value } }: { field: ControllerFieldProps }) => (
-              <TextInput
-                style={[
-                  styles.input,
-                  form.formState.errors.phone && styles.inputError
-                ]}
-                placeholder="+91 9876543210"
-                value={value}
-                onChangeText={onChange}
-                keyboardType="phone-pad"
-              />
-            )}
-          />
-          {form.formState.errors.phone && (
-            <Text style={styles.errorText}>
-              {form.formState.errors.phone.message}
-            </Text>
-          )}
-        </View>
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Story</Text>
+        {renderInput('about', 'About Company', 'About your company', 'description', true, 3)}
       </View>
 
-      <View style={styles.inputRow}>
-        <View style={styles.inputFullWidth}>
-          <Text style={styles.label}>Website</Text>
-          <Controller
-            control={form.control}
-            name="website"
-            render={({ field: { onChange, value } }: { field: ControllerFieldProps }) => (
-              <TextInput
-                style={[
-                  styles.input,
-                  form.formState.errors.website && styles.inputError
-                ]}
-                placeholder="medtech-innovations.com"
-                value={value}
-                onChangeText={onChange}
-                autoCapitalize="none"
-              />
-            )}
-          />
-          {form.formState.errors.website && (
-            <Text style={styles.errorText}>
-              {form.formState.errors.website.message}
-            </Text>
-          )}
-        </View>
-      </View>
-
-      <View style={styles.inputRow}>
-        <View style={styles.inputFullWidth}>
-          <Text style={styles.label}>Booth Number</Text>
-          <Controller
-            control={form.control}
-            name="booth_number"
-            render={({ field: { onChange, value } }: { field: ControllerFieldProps }) => (
-              <TextInput
-                style={[
-                  styles.input,
-                  form.formState.errors.booth_number && styles.inputError
-                ]}
-                placeholder="B-205"
-                value={value}
-                onChangeText={onChange}
-              />
-            )}
-          />
-          {form.formState.errors.booth_number && (
-            <Text style={styles.errorText}>
-              {form.formState.errors.booth_number.message}
-            </Text>
-          )}
-        </View>
-      </View>
-
-      <View style={styles.inputRow}>
-        <View style={styles.inputFullWidth}>
-          <Text style={styles.label}>Hall</Text>
-          <Controller
-            control={form.control}
-            name="hall"
-            render={({ field: { onChange, value } }: { field: ControllerFieldProps }) => (
-              <TextInput
-                style={[
-                  styles.input,
-                  form.formState.errors.hall && styles.inputError
-                ]}
-                placeholder="Hall B"
-                value={value}
-                onChangeText={onChange}
-              />
-            )}
-          />
-          {form.formState.errors.hall && (
-            <Text style={styles.errorText}>
-              {form.formState.errors.hall.message}
-            </Text>
-          )}
-        </View>
-      </View>
-
-      <View style={styles.inputContainer}>
-        <Text style={styles.label}>Address</Text>
-        <Controller
-          control={form.control}
-          name="address"
-          render={({ field: { onChange, value } }: { field: ControllerFieldProps }) => (
-            <TextInput
-              style={[
-                styles.input,
-                form.formState.errors.address && styles.inputError
-              ]}
-              placeholder="456 Innovation Blvd"
-              value={value}
-              onChangeText={onChange}
-            />
-          )}
-        />
-        {form.formState.errors.address && (
-          <Text style={styles.errorText}>
-            {form.formState.errors.address.message}
-          </Text>
-        )}
-      </View>
-
-      <View style={styles.inputRow}>
-        <View style={styles.inputFullWidth}>
-          <Text style={styles.label}>City *</Text>
-          <Controller
-            control={form.control}
-            name="city"
-            render={({ field: { onChange, value } }: { field: ControllerFieldProps }) => (
-              <TextInput
-                style={[
-                  styles.input,
-                  form.formState.errors.city && styles.inputError
-                ]}
-                placeholder="Boston"
-                value={value}
-                onChangeText={onChange}
-              />
-            )}
-          />
-          {form.formState.errors.city && (
-            <Text style={styles.errorText}>
-              {form.formState.errors.city.message}
-            </Text>
-          )}
-        </View>
-      </View>
-
-      <View style={styles.inputRow}>
-        <View style={styles.inputFullWidth}>
-          <Text style={styles.label}>Country *</Text>
-          <Controller
-            control={form.control}
-            name="country"
-            render={({ field: { onChange, value } }: { field: ControllerFieldProps }) => (
-              <TextInput
-                style={[
-                  styles.input,
-                  form.formState.errors.country && styles.inputError
-                ]}
-                placeholder="USA"
-                value={value}
-                onChangeText={onChange}
-              />
-            )}
-          />
-          {form.formState.errors.country && (
-            <Text style={styles.errorText}>
-              {form.formState.errors.country.message}
-            </Text>
-          )}
-        </View>
-      </View>
-
-      <View style={styles.inputContainer}>
-        <Text style={styles.label}>About Company</Text>
-        <Controller
-          control={form.control}
-          name="about"
-          render={({ field: { onChange, value } }: { field: ControllerFieldProps }) => (
-            <TextInput
-              style={[
-                styles.input,
-                form.formState.errors.about && styles.inputError,
-                { height: 80, textAlignVertical: 'top' }
-              ]}
-              placeholder="About your company"
-              value={value}
-              onChangeText={onChange}
-              multiline
-              numberOfLines={3}
-            />
-          )}
-        />
-        {form.formState.errors.about && (
-          <Text style={styles.errorText}>
-            {form.formState.errors.about.message}
-          </Text>
-        )}
-      </View>
-
-      {/* Action Button */}
       <TouchableOpacity
         style={[
           styles.primaryButton,
@@ -1288,7 +1110,7 @@ function CompanyProfileForm({
             <Text style={styles.primaryButtonText}>
               Save Profile
             </Text>
-            <Save size={20} color="#ffffff" />
+            <Save size={16} color="#ffffff" />
           </View>
         )}
       </TouchableOpacity>

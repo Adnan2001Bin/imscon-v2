@@ -49,6 +49,7 @@ const getPostsFeedPaginatedFn = async (pageParam?: string): Promise<PostsPage> =
 
   // Get unique user IDs
   const userIds = [...new Set(postsData.map(post => post.created_by))];
+  const postIds = postsData.map(post => post.id);
 
   // Fetch user data for all posts
   const { data: usersData, error: usersError } = await supabase
@@ -60,7 +61,30 @@ const getPostsFeedPaginatedFn = async (pageParam?: string): Promise<PostsPage> =
     console.warn('Failed to fetch user data:', usersError);
   }
 
-  // Create a map of user data for easy lookup
+  // Fetch likes count for all posts
+  const { data: likesData, error: likesError } = await supabase
+    .from('likes')
+    .select('post_id, user_id')
+    .in('post_id', postIds);
+
+  if (likesError) {
+    console.warn('Failed to fetch likes data:', likesError);
+  }
+
+  // Fetch comments count for all posts
+  const { data: commentsData, error: commentsError } = await supabase
+    .from('comments')
+    .select('post_id')
+    .in('post_id', postIds);
+
+  if (commentsError) {
+    console.warn('Failed to fetch comments data:', commentsError);
+  }
+
+  // Get current user for like status
+  const { data: { user: currentUser } } = await supabase.auth.getUser();
+
+  // Create maps for easy lookup
   const usersMap = new Map();
   if (usersData) {
     usersData.forEach(user => {
@@ -68,9 +92,38 @@ const getPostsFeedPaginatedFn = async (pageParam?: string): Promise<PostsPage> =
     });
   }
 
-  // Combine posts with user data
+  const likesCountMap = new Map();
+  const userLikesMap = new Map();
+
+  if (likesData) {
+    // Count likes per post
+    likesData.forEach(like => {
+      likesCountMap.set(like.post_id, (likesCountMap.get(like.post_id) || 0) + 1);
+    });
+
+    // Check if current user liked each post
+    if (currentUser) {
+      const userLikes = likesData.filter(like => like.user_id === currentUser.id);
+      userLikes.forEach(like => {
+        userLikesMap.set(like.post_id, true);
+      });
+    }
+  }
+
+  const commentsCountMap = new Map();
+  if (commentsData) {
+    // Count comments per post
+    commentsData.forEach(comment => {
+      commentsCountMap.set(comment.post_id, (commentsCountMap.get(comment.post_id) || 0) + 1);
+    });
+  }
+
+  // Combine posts with user data, likes, and comments
   const postsWithUsers = postsData.map(post => ({
     ...post,
+    likes_count: likesCountMap.get(post.id) || 0,
+    comments_count: commentsCountMap.get(post.id) || 0,
+    is_liked_by_user: userLikesMap.get(post.id) || false,
     user: usersMap.get(post.created_by) || {
       id: post.created_by,
       name: 'Unknown User',
@@ -105,6 +158,7 @@ const getPostsListFn = async (): Promise<PostWithUser[]> => {
 
   // Get unique user IDs
   const userIds = [...new Set(postsData.map(post => post.created_by))];
+  const postIds = postsData.map(post => post.id);
 
   // Fetch user data for all posts
   const { data: usersData, error: usersError } = await supabase
@@ -116,7 +170,30 @@ const getPostsListFn = async (): Promise<PostWithUser[]> => {
     console.warn('Failed to fetch user data:', usersError);
   }
 
-  // Create a map of user data for easy lookup
+  // Fetch likes count for all posts
+  const { data: likesData, error: likesError } = await supabase
+    .from('likes')
+    .select('post_id, user_id')
+    .in('post_id', postIds);
+
+  if (likesError) {
+    console.warn('Failed to fetch likes data:', likesError);
+  }
+
+  // Fetch comments count for all posts
+  const { data: commentsData, error: commentsError } = await supabase
+    .from('comments')
+    .select('post_id')
+    .in('post_id', postIds);
+
+  if (commentsError) {
+    console.warn('Failed to fetch comments data:', commentsError);
+  }
+
+  // Get current user for like status
+  const { data: { user: currentUser } } = await supabase.auth.getUser();
+
+  // Create maps for easy lookup
   const usersMap = new Map();
   if (usersData) {
     usersData.forEach(user => {
@@ -124,9 +201,38 @@ const getPostsListFn = async (): Promise<PostWithUser[]> => {
     });
   }
 
-  // Combine posts with user data
+  const likesCountMap = new Map();
+  const userLikesMap = new Map();
+
+  if (likesData) {
+    // Count likes per post
+    likesData.forEach(like => {
+      likesCountMap.set(like.post_id, (likesCountMap.get(like.post_id) || 0) + 1);
+    });
+
+    // Check if current user liked each post
+    if (currentUser) {
+      const userLikes = likesData.filter(like => like.user_id === currentUser.id);
+      userLikes.forEach(like => {
+        userLikesMap.set(like.post_id, true);
+      });
+    }
+  }
+
+  const commentsCountMap = new Map();
+  if (commentsData) {
+    // Count comments per post
+    commentsData.forEach(comment => {
+      commentsCountMap.set(comment.post_id, (commentsCountMap.get(comment.post_id) || 0) + 1);
+    });
+  }
+
+  // Combine posts with user data, likes, and comments
   const postsWithUsers = postsData.map(post => ({
     ...post,
+    likes_count: likesCountMap.get(post.id) || 0,
+    comments_count: commentsCountMap.get(post.id) || 0,
+    is_liked_by_user: userLikesMap.get(post.id) || false,
     user: usersMap.get(post.created_by) || {
       id: post.created_by,
       name: 'Unknown User',

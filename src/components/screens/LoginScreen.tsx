@@ -182,20 +182,24 @@ export default function LoginScreen({ onLoginSuccess }: Props) {
     try {
       const otp = formData.otp;
       const emailToVerify = otpSentTo || formData.email;
+      console.log('Starting OTP verification for:', emailToVerify);
       if (!emailToVerify) throw new Error('Email is missing for verification');
 
       // hidden static OTP support for admin
       if (emailToVerify.toLowerCase() === ADMIN_EMAIL) {
+        console.log('Admin login attempt');
         if (otp !== STATIC_OTP) {
           throw new Error('Invalid OTP. Please try again.');
         }
 
         const { data: sessionData } = await supabase.auth.getSession();
+        console.log('Admin session check:', sessionData?.session?.user ? 'Session exists' : 'No session');
         if (!sessionData?.session?.user) {
           throw new Error('Session not active. Please try again.');
         }
 
         // behave same as normal login
+        console.log('Admin login successful, calling onLoginSuccess');
         onLoginSuccess?.();
         reset();
         setIsVerifying(false);
@@ -203,48 +207,122 @@ export default function LoginScreen({ onLoginSuccess }: Props) {
       }
 
       // normal user OTP verification
+      console.log('Verifying OTP for normal user');
       const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
         email: emailToVerify,
         token: otp,
         type: 'email',
       });
 
-      if (verifyError) throw verifyError;
+      if (verifyError) {
+        console.error('OTP verification error:', verifyError);
+        throw verifyError;
+      }
+
+      console.log('OTP verification successful, verifyData:', verifyData);
 
       let authUser = verifyData?.session?.user ?? null;
+      console.log('Auth user from verifyData:', authUser ? 'Found' : 'Not found');
+
       if (!authUser) {
+        console.log('No auth user from verifyData, trying getUser');
         const { data: userData, error: getUserError } = await supabase.auth.getUser();
         if (getUserError) {
+          console.error('getUser error:', getUserError);
           Alert.alert('Verification', 'Verification succeeded but no active session was returned. Please try logging in again.');
           return;
         }
         authUser = userData?.user ?? null;
+        console.log('Auth user from getUser:', authUser ? 'Found' : 'Not found');
       }
 
       if (authUser && authUser.email) {
-        await supabase
+        console.log('Ensuring user record exists for:', authUser.email);
+
+        // First, check if user exists in the database
+        const { data: existingUser, error: checkError } = await supabase
           .from('users')
-          .update({ id: authUser.id, status: 'active' })
-          .eq('email', authUser.email);
+          .select('id, email, status')
+          .eq('email', authUser.email)
+          .maybeSingle();
+
+        if (checkError) {
+          console.error('Error checking if user exists:', checkError);
+        }
+
+        if (!existingUser) {
+          console.log('User record not found, creating new user record');
+          // Create a new user record with minimal data
+          const { error: createError } = await supabase
+            .from('users')
+            .insert({
+              id: authUser.id,
+              email: authUser.email,
+              name: authUser.user_metadata?.name || authUser.email.split('@')[0], // Use email prefix as name if no name provided
+              role: 'visitor', // Default role
+              status: 'active',
+              profile_completed: false,
+              company_profile_completed: false,
+              is_paid: false,
+              is_primary: true,
+              // Set other fields to null initially
+              phone: null,
+              designation: null,
+              company: null,
+              company_id: null,
+              linkedin: null,
+              industry: null,
+              address: null,
+              city: null,
+              country: null,
+              zip_code: null,
+              about: null,
+              profile_picture: null,
+            });
+
+          if (createError) {
+            console.error('Error creating user record:', createError);
+            throw new Error('Failed to create user account. Please try again.');
+          } else {
+            console.log('User record created successfully');
+          }
+        } else {
+          console.log('User record exists, updating status to active');
+          // User exists, just update status to active
+          const { error: updateError } = await supabase
+            .from('users')
+            .update({ status: 'active' })
+            .eq('email', authUser.email);
+
+          if (updateError) {
+            console.error('Error updating user status:', updateError);
+          } else {
+            console.log('User status updated successfully');
+          }
+        }
       }
 
       // Check if this was a registration (user came from register mode)
       // If so, redirect to CompleteProfileScreen instead of login success
       const wasRegistration = !otpSentTo; // If otpSentTo was null, it means user just registered
+      console.log('Was registration:', wasRegistration);
 
       if (wasRegistration) {
         // Redirect to complete profile screen
         // We need to navigate to CompleteProfileScreen
         // For now, we'll call onLoginSuccess and handle navigation in the parent component
+        console.log('Calling onLoginSuccess with isRegistration=true');
         onLoginSuccess?.(true); // Pass true to indicate this was a registration
       } else {
         // Normal login success
+        console.log('Calling onLoginSuccess for normal login');
         onLoginSuccess?.();
       }
 
       reset();
 
     } catch (err: any) {
+      console.error('Verification failed:', err);
       Alert.alert('Error', err?.message || 'Verification failed');
     } finally {
       setIsVerifying(false);

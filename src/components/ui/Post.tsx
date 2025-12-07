@@ -2,8 +2,8 @@ import type { PostWithUser } from '@/src/types/post';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, Dimensions, Image, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { getPostLikeStatus, togglePostLike } from '../services/post';
+import { Alert, Dimensions, Image, Linking, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { togglePostLike } from '../services/post';
 import CommentSection from './CommentSection';
 
 const { width } = Dimensions.get('window');
@@ -24,20 +24,12 @@ export default function Post({ post, onLike, onComment, onShare }: PostProps) {
   const [isCommentModalVisible, setIsCommentModalVisible] = useState(false);
 
 
-  // Load initial like status and counts
+  // Update state when post data changes (from props)
   useEffect(() => {
-    const loadLikeStatus = async () => {
-      try {
-        const { isLiked, likesCount } = await getPostLikeStatus(post.id);
-        setIsLiked(isLiked);
-        setLikesCount(likesCount);
-      } catch (error) {
-        console.error('Failed to load like status:', error);
-      }
-    };
-
-    loadLikeStatus();
-  }, [post.id]);
+    setLikesCount(post.likes_count || 0);
+    setCommentsCount(post.comments_count || 0);
+    setIsLiked(post.is_liked_by_user || false);
+  }, [post.likes_count, post.comments_count, post.is_liked_by_user]);
 
   const handleLike = async () => {
     if (isLikeLoading) return;
@@ -61,6 +53,46 @@ export default function Post({ post, onLike, onComment, onShare }: PostProps) {
   const handleComment = () => {
     setIsCommentModalVisible(true);
     onComment?.();
+  };
+
+  const handleShare = async () => {
+    try {
+      let message = post.content || '';
+
+      // Add YouTube link if available
+      if (post.youtube_url) {
+        message += `\n\nYouTube: ${post.youtube_url}`;
+      }
+
+      // Add document links if available
+      if (post.document_urls && post.document_urls.length > 0) {
+        message += '\n\nDocuments:';
+        post.document_urls.forEach(url => {
+          message += `\n${url}`;
+        });
+      }
+
+      const result = await Share.share({
+        message: message.trim(),
+        url: post.media_urls && post.media_urls.length > 0 ? post.media_urls[0] : undefined,
+      });
+
+      if (result.action === Share.sharedAction) {
+        if (result.activityType) {
+          // Shared with activity type of result.activityType
+        } else {
+          // Shared
+        }
+      } else if (result.action === Share.dismissedAction) {
+        // Dismissed
+      }
+
+      // Call the parent onShare callback if provided
+      onShare?.();
+    } catch (error) {
+      console.error('Error sharing post:', error);
+      Alert.alert('Error', 'Failed to share post. Please try again.');
+    }
   };
 
 
@@ -117,9 +149,7 @@ export default function Post({ post, onLike, onComment, onShare }: PostProps) {
     const layout = getImageLayout();
 
     return (
-      <TouchableOpacity style={styles.mediaContainer} onPress={() => {
-        router.push(`/post/${post.id}`);
-      }}>
+      <View style={styles.mediaContainer}>
         {layout.rows.map((row, rowIndex) => (
           <View key={rowIndex} style={row.style}>
             {row.images.map((imageIndex, colIndex) => {
@@ -143,7 +173,7 @@ export default function Post({ post, onLike, onComment, onShare }: PostProps) {
             })}
           </View>
         ))}
-      </TouchableOpacity>
+      </View>
     );
   };
 
@@ -322,75 +352,85 @@ export default function Post({ post, onLike, onComment, onShare }: PostProps) {
 
   return (
     <View style={styles.container}>
-      {/* Sponsored Badge */}
-      {post.sponsored && (
-        <View style={styles.sponsoredBadge}>
-          <Ionicons name="megaphone" size={14} color="#666" />
-          <Text style={styles.sponsoredText}>Sponsored</Text>
+      {/* Post Content - Clickable */}
+      <TouchableOpacity
+        style={styles.postContent}
+        onPress={() => router.push(`/post/${post.id}`)}
+        activeOpacity={0.7}
+      >
+        {/* Sponsored Badge */}
+        {post.sponsored && (
+          <View style={styles.sponsoredBadge}>
+            <Ionicons name="megaphone" size={14} color="#666" />
+            <Text style={styles.sponsoredText}>Sponsored</Text>
+          </View>
+        )}
+
+        {/* Header */}
+        <View style={styles.header}>
+          <Image
+            source={require('../../../assets/images/lub-karnataka.png')}
+            style={styles.avatar}
+          />
+          <View style={styles.headerText}>
+            <Text style={styles.userName}>
+              LUB
+            </Text>
+            <Text style={styles.userDetails}>
+              Official Updates
+            </Text>
+            <Text style={styles.timestamp}>{formatDate(post.created_at)}</Text>
+          </View>
+          <TouchableOpacity style={styles.moreButton}>
+            <Ionicons name="ellipsis-horizontal" size={20} color="#666" />
+          </TouchableOpacity>
         </View>
-      )}
 
-      {/* Header */}
-      <View style={styles.header}>
-        <Image
-          source={require('../../../assets/images/lub-karnataka.png')}
-          style={styles.avatar}
-        />
-        <View style={styles.headerText}>
-          <Text style={styles.userName}>
-            LUB
-          </Text>
-          <Text style={styles.userDetails}>
-            Official Updates
-          </Text>
-          <Text style={styles.timestamp}>{formatDate(post.created_at)}</Text>
-        </View>
-        <TouchableOpacity style={styles.moreButton}>
-          <Ionicons name="ellipsis-horizontal" size={20} color="#666" />
-        </TouchableOpacity>
-      </View>
+        {/* Content */}
+        {renderContent()}
 
-      {/* Content */}
-      {renderContent()}
+        {/* Media */}
+        {renderMedia()}
 
-      {/* Media */}
-      {renderMedia()}
+        {/* YouTube */}
+        {renderYouTubeEmbed()}
 
-      {/* YouTube */}
-      {renderYouTubeEmbed()}
-
-      {/* Documents */}
-      {renderDocuments()}
+        {/* Documents */}
+        {renderDocuments()}
+      </TouchableOpacity>
 
       {/* Actions */}
       <View style={styles.actions}>
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={handleLike}
-          disabled={isLikeLoading}
-        >
-          <Ionicons
-            name={isLiked ? "thumbs-up" : "thumbs-up-outline"}
-            size={20}
-            color={isLiked ? "#AF2225" : "#666"}
-          />
-          <Text style={[styles.actionText, isLiked && styles.likedText]}>
-            {likesCount > 0 ? `${likesCount} Like${likesCount !== 1 ? 's' : ''}` : 'Like'}
-          </Text>
-        </TouchableOpacity>
+  <TouchableOpacity
+    style={styles.actionButton}
+    onPress={handleLike}
+    disabled={isLikeLoading}
+  >
+    <Ionicons
+      name={isLiked ? "thumbs-up" : "thumbs-up-outline"}
+      size={20}
+      color={isLiked ? "#AF2225" : "#666"}
+    />
+    <Text 
+      style={[styles.actionText, isLiked && styles.likedText]}
+      numberOfLines={1}
+    >
+      {likesCount > 0 ? `${likesCount} Like${likesCount !== 1 ? 's' : ''}` : 'Like'}
+    </Text>
+  </TouchableOpacity>
 
-        <TouchableOpacity style={styles.actionButton} onPress={handleComment}>
-          <Ionicons name="chatbubble-outline" size={20} color="#666" />
-          <Text style={styles.actionText}>
-            {commentsCount > 0 ? `${commentsCount} Comment${commentsCount !== 1 ? 's' : ''}` : 'Comment'}
-          </Text>
-        </TouchableOpacity>
+  <TouchableOpacity style={styles.actionButton} onPress={handleComment}>
+    <Ionicons name="chatbubble-outline" size={20} color="#666" />
+    <Text style={styles.actionText} numberOfLines={1}>
+      {commentsCount > 0 ? `${commentsCount} Comment${commentsCount !== 1 ? 's' : ''}` : 'Comment'}
+    </Text>
+  </TouchableOpacity>
 
-        <TouchableOpacity style={styles.actionButton} onPress={onShare}>
-          <Ionicons name="share-outline" size={20} color="#666" />
-          <Text style={styles.actionText}>Share</Text>
-        </TouchableOpacity>
-      </View>
+  <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
+    <Ionicons name="share-outline" size={20} color="#666" />
+    <Text style={styles.actionText} numberOfLines={1}>Share</Text>
+  </TouchableOpacity>
+</View>
 
       {/* Comment Section */}
       <CommentSection
@@ -411,12 +451,9 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginVertical: 8,
     borderRadius: 8,
+  },
+  postContent: {
     padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
   },
   sponsoredBadge: {
     flexDirection: 'row',
@@ -477,7 +514,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   link: {
-    color: '#059669',
+    color: '#1d4ed8',
     fontWeight: '500',
     textDecorationLine: 'underline',
   },
@@ -589,19 +626,23 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#f0f0f0',
     paddingTop: 12,
+    justifyContent: 'space-between', // Distribute space evenly
   },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 8,
-    paddingHorizontal: 16,
-    marginRight: 8,
+    paddingHorizontal: 2, // Reduced padding
+    flex: 1, // Take equal space
+    justifyContent: 'center', // Center content
+    minWidth: 0, // Allow shrinking below content size
   },
   actionText: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#666',
     marginLeft: 6,
     fontWeight: '500',
+    flexShrink: 1, // Allow text to shrink
   },
   likedText: {
     color: '#AF2225',

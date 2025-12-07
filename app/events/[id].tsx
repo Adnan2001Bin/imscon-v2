@@ -1,5 +1,4 @@
 import MobileBottomNavigation from '@/src/components/MobileBottomNavigation';
-import MobileHeader from '@/src/components/MobileHeader';
 import EventDetail from '@/src/components/ui/EventDetail';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
@@ -27,7 +26,6 @@ export default function EventDetailScreen() {
   if (isLoading) {
     return (
       <View style={styles.container}>
-        <MobileHeader />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#AF2225" />
           <Text style={styles.loadingText}>Loading event details...</Text>
@@ -40,7 +38,6 @@ export default function EventDetailScreen() {
   if (error || !event) {
     return (
       <View style={styles.container}>
-        <MobileHeader />
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle" size={48} color="#dc2626" />
           <Text style={styles.errorTitle}>Event Not Found</Text>
@@ -58,7 +55,6 @@ export default function EventDetailScreen() {
 
   return (
     <View style={styles.container}>
-      <MobileHeader />
       <View style={styles.content}>
         <EventDetail event={event} />
       </View>

@@ -28,7 +28,7 @@ const primaryNavigationItems: NavigationItem[] = [
   { id: 'network', label: 'My Network', iconName: 'users', iconType: 'Feather' },
   { id: 'events', label: 'Events', iconName: 'calendar', iconType: 'Feather' },
   { id: 'message', label: 'Message', iconName: 'message-circle', iconType: 'Feather' },
-  { id: 'resource', label: 'Resource', iconName: 'file-text', iconType: 'Feather' },
+  { id: 'resources', label: 'Resources', iconName: 'file-text', iconType: 'Feather' },
 ];
 
 
@@ -54,7 +54,7 @@ export default function MobileBottomNavigation({
     if (path === '/network' || path.startsWith('/user/')) return 'network';
     if (path === '/events' || path.startsWith('/events/')) return 'events';
     if (path === '/chat' || path === '/message') return 'message';
-    if (path === '/resource') return 'resource';
+    if (path === '/resources') return 'resources';
     return 'home';
   };
 
@@ -110,8 +110,8 @@ export default function MobileBottomNavigation({
       case 'message':
         router.push('/chat' as any);
         break;
-      case 'resource':
-        router.push('/resource' as any);
+      case 'resources':
+        router.push('/resources' as any);
         break;
       default:
         router.push('/');

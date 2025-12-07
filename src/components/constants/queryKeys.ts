@@ -32,12 +32,7 @@ export const k = {
       root: () => ['floorMap'] as const,
       list: () => [...k.floorMap.root(), 'list'] as const,
     },
-  
-    advertisement: {
-      root: () => ['advertisement'] as const,
-      list: () => [...k.advertisement.root(), 'list'] as const,
-    },
-  
+
     notification: {
       root: () => ['notification'] as const,
       list: () => [...k.notification.root(), 'list'] as const,
@@ -55,6 +50,12 @@ export const k = {
       feed: () => [...k.event.root(), 'feed'] as const,
       single: (eventId: string) => [...k.event.root(), 'single', eventId] as const,
       agendaSessions: (eventId: string) => [...k.event.root(), 'agenda', eventId] as const,
+    },
+
+    advertisement: {
+      root: () => ['advertisement'] as const,
+      list: () => [...k.advertisement.root(), 'list'] as const,
+      active: () => [...k.advertisement.root(), 'active'] as const,
     },
   } as const
   

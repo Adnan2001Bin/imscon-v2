@@ -1,26 +1,42 @@
-import queryKeys from '../constants/queryKeys';
 import { supabase } from '@/src/lib/supabase';
-import { queryOptions } from '@tanstack/react-query';
 import type { Advertisement } from '@/src/types/advertisement';
+import { queryOptions } from '@tanstack/react-query';
+import queryKeys from '../constants/queryKeys';
 
 export type { Advertisement };
 
-// Get all advertisements
-export const getAdvertisementsOptions = () =>
+// Get active advertisements (for banner rotation)
+export const getActiveAdvertisementsOptions = () =>
+  queryOptions({
+    queryKey: queryKeys.advertisement.active(),
+    queryFn: () => getActiveAdvertisementsFn(),
+  });
+
+// Get all advertisements (for admin purposes)
+export const getAdvertisementsListOptions = () =>
   queryOptions({
     queryKey: queryKeys.advertisement.list(),
-    queryFn: () => getAdvertisementsFn(),
+    queryFn: () => getAdvertisementsListFn(),
   });
 
-// Get the latest/active advertisement for banner display
-export const getLatestAdvertisementOptions = () =>
-  queryOptions({
-    queryKey: [...queryKeys.advertisement.list(), 'latest'],
-    queryFn: () => getLatestAdvertisementFn(),
-  });
+// Function to fetch active advertisements
+const getActiveAdvertisementsFn = async (): Promise<Advertisement[]> => {
+  const { data: advertisements, error } = await supabase
+    .from('advertisements')
+    .select('*')
+    .eq('status', 'active')
+    .order('created_at', { ascending: false });
 
-const getAdvertisementsFn = async (): Promise<Advertisement[]> => {
-  const { data, error } = await supabase
+  if (error) {
+    throw new Error(`Failed to fetch advertisements: ${error.message}`);
+  }
+
+  return advertisements || [];
+};
+
+// Function to fetch all advertisements
+const getAdvertisementsListFn = async (): Promise<Advertisement[]> => {
+  const { data: advertisements, error } = await supabase
     .from('advertisements')
     .select('*')
     .order('created_at', { ascending: false });
@@ -29,28 +45,56 @@ const getAdvertisementsFn = async (): Promise<Advertisement[]> => {
     throw new Error(`Failed to fetch advertisements: ${error.message}`);
   }
 
-  return data as Advertisement[];
+  return advertisements || [];
 };
 
-const getLatestAdvertisementFn = async (): Promise<Advertisement | null> => {
-  const { data, error } = await supabase
+// Create a new advertisement
+export const createAdvertisement = async (advertisementData: {
+  title: string;
+  image_url: string;
+  link_url?: string;
+  status?: string;
+}) => {
+  const { data: advertisement, error } = await supabase
     .from('advertisements')
+    .insert({
+      ...advertisementData,
+      status: advertisementData.status || 'active',
+    })
     .select('*')
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .single();
 
   if (error) {
-    throw new Error(`Failed to fetch latest advertisement: ${error.message}`);
+    throw new Error(`Failed to create advertisement: ${error.message}`);
   }
 
-  return data as Advertisement | null;
+  return advertisement as Advertisement;
 };
 
+// Update an advertisement
+export const updateAdvertisement = async (advertisementId: string, updates: Partial<Advertisement>) => {
+  const { data: advertisement, error } = await supabase
+    .from('advertisements')
+    .update(updates)
+    .eq('id', advertisementId)
+    .select('*')
+    .single();
 
+  if (error) {
+    throw new Error(`Failed to update advertisement: ${error.message}`);
+  }
 
+  return advertisement as Advertisement;
+};
 
+// Delete an advertisement
+export const deleteAdvertisement = async (advertisementId: string) => {
+  const { error } = await supabase
+    .from('advertisements')
+    .delete()
+    .eq('id', advertisementId);
 
-
-
-
+  if (error) {
+    throw new Error(`Failed to delete advertisement: ${error.message}`);
+  }
+};

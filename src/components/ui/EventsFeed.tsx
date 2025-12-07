@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   eventsContainer: {
-    paddingBottom: 100, // Extra bottom padding for mobile bottom navigation
+    paddingBottom: 80, // Extra bottom padding for mobile bottom navigation
   },
   loadingContainer: {
     paddingVertical: 8,

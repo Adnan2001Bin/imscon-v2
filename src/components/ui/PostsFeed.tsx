@@ -1,7 +1,6 @@
 import type { PostWithUser } from '@/src/types/post';
 import { Ionicons } from '@expo/vector-icons';
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import React, { useEffect, useState } from 'react';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import {
     ActivityIndicator,
     FlatList,
@@ -11,17 +10,9 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { getAdvertisementsOptions } from '../services/advertisement';
 import { getPostsFeedOptions } from '../services/post';
-import AdvertisementBanner from './AdvertisementBanner';
 import Post from './Post';
 import PostSkeleton from './PostSkeleton';
-import ShowAdsButton from './ShowAdsButton';
-
-type FeedItem =
-  | { type: 'post'; data: PostWithUser }
-  | { type: 'advertisement'; data: any }
-  | { type: 'showAdsButton' };
 
 interface PostsFeedProps {
   onRefresh?: () => void;
@@ -30,9 +21,6 @@ interface PostsFeedProps {
 }
 
 export default function PostsFeed({ onRefresh, refreshing, onScroll }: PostsFeedProps) {
-  const [showBanner, setShowBanner] = useState(true);
-  const [currentAdIndex, setCurrentAdIndex] = useState(0);
-
   const {
     data,
     error,
@@ -43,33 +31,7 @@ export default function PostsFeed({ onRefresh, refreshing, onScroll }: PostsFeed
     refetch,
   } = useInfiniteQuery(getPostsFeedOptions());
 
-  const { data: advertisements } = useQuery(getAdvertisementsOptions());
-
   const posts = data?.pages.flatMap(page => page.data) || [];
-
-  // Rotate advertisements every 20 seconds
-  useEffect(() => {
-    if (!advertisements || advertisements.length <= 1) return;
-
-    const interval = setInterval(() => {
-      setCurrentAdIndex((prevIndex) => (prevIndex + 1) % advertisements.length);
-    }, 20000); // 20 seconds
-
-    return () => clearInterval(interval);
-  }, [advertisements]);
-
-  const currentAdvertisement = advertisements?.[currentAdIndex] || advertisements?.[0];
-
-  // Create combined data array with advertisement at the top if banner should be shown
-  const feedData = React.useMemo(() => {
-    const data: FeedItem[] = posts.map(post => ({ type: 'post' as const, data: post }));
-    if (showBanner && currentAdvertisement) {
-      data.unshift({ type: 'advertisement', data: currentAdvertisement });
-    } else if (!showBanner && advertisements && advertisements.length > 0) {
-      data.unshift({ type: 'showAdsButton' });
-    }
-    return data;
-  }, [posts, showBanner, currentAdvertisement, advertisements]);
 
   const handleLoadMore = () => {
     if (hasNextPage && !isFetchingNextPage) {
@@ -82,48 +44,28 @@ export default function PostsFeed({ onRefresh, refreshing, onScroll }: PostsFeed
     onRefresh?.();
   };
 
-  const renderItem = ({ item }: { item: FeedItem }) => {
-    if (item.type === 'advertisement') {
-      return (
-        <AdvertisementBanner
-          advertisement={item.data}
-          onClose={() => setShowBanner(false)}
-        />
-      );
-    }
-
-    if (item.type === 'showAdsButton') {
-      return <ShowAdsButton onShowAds={() => setShowBanner(true)} />;
-    }
-
-    // Regular post item
+  const renderItem = ({ item }: { item: PostWithUser }) => {
     return (
       <Post
-        post={item.data}
+        post={item}
         onLike={() => {
           // TODO: Implement like functionality
-          console.log('Like post:', item.data.id);
+          console.log('Like post:', item.id);
         }}
         onComment={() => {
           // TODO: Implement comment functionality
-          console.log('Comment on post:', item.data.id);
+          console.log('Comment on post:', item.id);
         }}
         onShare={() => {
           // TODO: Implement share functionality
-          console.log('Share post:', item.data.id);
+          console.log('Share post:', item.id);
         }}
       />
     );
   };
 
-  const getItemKey = (item: FeedItem, index: number) => {
-    if (item.type === 'advertisement') {
-      return `advertisement-${currentAdvertisement?.id || 'current'}`;
-    }
-    if (item.type === 'showAdsButton') {
-      return 'show-ads-button';
-    }
-    return item.data.id;
+  const getItemKey = (item: PostWithUser, index: number) => {
+    return item.id;
   };
 
   const renderFooter = () => {
@@ -186,10 +128,9 @@ export default function PostsFeed({ onRefresh, refreshing, onScroll }: PostsFeed
 
   return (
     <FlatList
-      data={feedData}
+      data={posts}
       renderItem={renderItem}
       keyExtractor={getItemKey}
-      stickyHeaderIndices={showBanner && currentAdvertisement ? [0] : []}
       onEndReached={handleLoadMore}
       onEndReachedThreshold={0.5}
       onScroll={onScroll}

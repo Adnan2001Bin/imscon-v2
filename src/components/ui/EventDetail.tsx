@@ -1,6 +1,7 @@
 import type { AgendaSession, EventWithUser } from '@/src/types/event';
 import { Ionicons } from '@expo/vector-icons';
 import { useInfiniteQuery } from '@tanstack/react-query';
+import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
   Dimensions,
@@ -23,6 +24,7 @@ interface EventDetailProps {
 }
 
 export default function EventDetail({ event }: EventDetailProps) {
+  const router = useRouter();
   const [selectedSession, setSelectedSession] = useState<AgendaSession | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
 
@@ -186,12 +188,24 @@ export default function EventDetail({ event }: EventDetailProps) {
   };
 
   return (
-    <ScrollView
-      style={styles.container}
-      showsVerticalScrollIndicator={false}
-      contentContainerStyle={styles.scrollContent}
-    >
-      {/* Cover Image */}
+    <View style={styles.container}>
+      {/* Fixed Back Button */}
+      <View style={styles.fixedBackButtonContainer}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
+          <Ionicons name="chevron-back" size={24} color="#333" />
+          <Text style={styles.backButtonText}>Back</Text>
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView
+        style={styles.scrollContainer}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* Cover Image */}
       {renderCoverImage()}
 
       {/* Header with Organizer */}
@@ -271,7 +285,7 @@ export default function EventDetail({ event }: EventDetailProps) {
             <Text style={styles.locationText} numberOfLines={1}>
               {event.is_online ? (
                 event.online_link ? (
-                  <TouchableOpacity onPress={() => Linking.openURL(event.online_link)}>
+                  <TouchableOpacity onPress={() => Linking.openURL(event.online_link!)}>
                     <Text style={styles.linkText}>
                       Join Online Event
                     </Text>
@@ -373,9 +387,14 @@ export default function EventDetail({ event }: EventDetailProps) {
               {/* Speakers */}
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Speakers</Text>
-                <Text style={styles.speakersText}>
-                  {selectedSession.speakers.join(', ')}
-                </Text>
+                <View style={styles.speakersContainer}>
+                  {selectedSession.speakers.map((speaker, index) => (
+                    <View key={index} style={styles.speakerItem}>
+                      <Ionicons name="person" size={16} color="#6b7280" />
+                      <Text style={styles.speakerName}>{speaker}</Text>
+                    </View>
+                  ))}
+                </View>
               </View>
 
               {/* Description */}
@@ -409,7 +428,8 @@ export default function EventDetail({ event }: EventDetailProps) {
           )}
         </View>
       </Modal>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -418,10 +438,41 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f8f9fa',
   },
+  fixedBackButtonContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+    backgroundColor: '#f8f9fa',
+    paddingHorizontal: 16,
+    paddingTop: 30, // Account for status bar
+    paddingBottom: 5,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  scrollContainer: {
+    flex: 1,
+    paddingTop: 70, // Space for fixed header
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    alignSelf: 'flex-start',
+  },
+  backButtonText: {
+    fontSize: 16,
+    color: '#333',
+    marginLeft: 4,
+    fontWeight: '500',
+  },
   scrollContent: {
     paddingBottom: 30,
   },
   coverImageContainer: {
+    marginTop: 10,
     marginBottom: 5,
     borderRadius: 6,
     overflow: 'hidden',
@@ -593,8 +644,8 @@ const styles = StyleSheet.create({
   },
   section: {
     paddingHorizontal: 20,
-    paddingVertical: 16,
-    marginBottom: 16,
+    paddingVertical: 12,
+    marginBottom: 8,
   },
   floorMapContainer: {
     flexDirection: 'row',
@@ -704,7 +755,7 @@ const styles = StyleSheet.create({
   },
   sessionMeta: {
     paddingVertical: 12,
-    marginBottom: 16,
+    marginBottom: 8,
     gap: 12,
   },
   metaRow: {
@@ -716,6 +767,25 @@ const styles = StyleSheet.create({
     color: '#111827',
     marginLeft: 10,
     fontWeight: '600',
+  },
+  speakersContainer: {
+    gap: 8,
+  },
+  speakerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  speakerName: {
+    fontSize: 16,
+    color: '#1f2937',
+    fontWeight: '500',
+    marginLeft: 10,
+    flex: 1,
   },
   speakersText: {
     fontSize: 16,

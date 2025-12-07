@@ -7,6 +7,8 @@ import { useAuth } from '@/src/hooks/useAuth';
 import { supabase } from '@/src/lib/supabase';
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Animated, StyleSheet, Text, View } from 'react-native';
+import { useQueryClient } from '@tanstack/react-query';
+import queryKeys from '@/src/components/constants/queryKeys';
 
 export default function HomeScreen() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -17,6 +19,10 @@ export default function HomeScreen() {
   const headerTranslateY = useRef(new Animated.Value(0)).current;
   const lastScrollY = useRef(0);
   const scrollDirection = useRef('up');
+  const [isHeaderVisible, setIsHeaderVisible] = useState(true);
+
+  // Query client for cache invalidation
+  const queryClient = useQueryClient();
 
   // Use auth hook to automatically restore session on app restart
   const { data: authData, isLoading: isAuthLoading, error: authError } = useAuth();
@@ -76,14 +82,27 @@ export default function HomeScreen() {
   };
 
   const handleLoginSuccess = async (isRegistration = false) => {
+    console.log('handleLoginSuccess called with isRegistration:', isRegistration);
     setIsLoggedIn(true);
     setIsCheckingProfile(true);
 
     try {
+      // Invalidate the auth query cache to ensure fresh data
+      console.log('Invalidating auth query cache');
+      await queryClient.invalidateQueries({ queryKey: queryKeys.user.currentUser() });
+
       // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
+      console.log('Getting current user from supabase.auth.getUser()');
+      const { data: { user }, error: getUserError } = await supabase.auth.getUser();
+
+      if (getUserError) {
+        console.error('getUser error:', getUserError);
+      }
+
+      console.log('Current user:', user ? { id: user.id, email: user.email } : 'No user');
 
       if (!user) {
+        console.log('No user found, setting needs profile completion');
         setNeedsProfileCompletion(true);
         setIsCheckingProfile(false);
         return;
@@ -91,13 +110,16 @@ export default function HomeScreen() {
 
       if (isRegistration) {
         // User just registered, always redirect to profile completion
+        console.log('User is new registration, redirecting to profile completion');
         setNeedsProfileCompletion(true);
         setIsCheckingProfile(false);
         return;
       }
 
       // Check if user has completed their profile
+      console.log('Checking profile completion for user:', user.id);
       const profileIncomplete = await checkProfileCompletion(user.id);
+      console.log('Profile incomplete:', profileIncomplete);
 
       if (profileIncomplete) {
         setNeedsProfileCompletion(true);
@@ -143,6 +165,7 @@ export default function HomeScreen() {
     if (diff > 0 && scrollDirection.current !== 'down') {
       // Scrolling down - hide header
       scrollDirection.current = 'down';
+      setIsHeaderVisible(false);
       Animated.timing(headerTranslateY, {
         toValue: -80, // Hide header (adjust based on header height)
         duration: 200,
@@ -151,6 +174,7 @@ export default function HomeScreen() {
     } else if (diff < 0 && scrollDirection.current !== 'up') {
       // Scrolling up - show header
       scrollDirection.current = 'up';
+      setIsHeaderVisible(true);
       Animated.timing(headerTranslateY, {
         toValue: 0, // Show header
         duration: 200,
@@ -205,7 +229,7 @@ export default function HomeScreen() {
         <MobileHeader onLogout={handleLogout} />
       </Animated.View>
 
-      <View style={styles.feedContainer}>
+      <View style={[styles.feedContainer, { paddingTop: isHeaderVisible ? 75 : 0 }]}>
         <PostsFeed onScroll={handleScroll} />
       </View>
 
@@ -230,7 +254,6 @@ const styles = StyleSheet.create({
   feedContainer: {
     flex: 1,
     backgroundColor: '#f9fafb',
-    paddingTop: 75, // Space for the header (adjust based on header height)
   },
   loadingContainer: {
     justifyContent: 'center',

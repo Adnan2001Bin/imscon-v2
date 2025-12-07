@@ -1,144 +1,86 @@
-import type { Advertisement } from '@/src/types/advertisement';
-import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
-import { Alert, Dimensions, Image, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useQuery } from '@tanstack/react-query';
+import React, { useEffect, useState } from 'react';
+import { Dimensions, Image, Linking, StyleSheet, TouchableOpacity, View } from 'react-native';
+import type { Advertisement } from '../../types/advertisement';
+import { getActiveAdvertisementsOptions } from '../services/advertisement';
 
-const { width } = Dimensions.get('window');
+const { width: screenWidth } = Dimensions.get('window');
 
 interface AdvertisementBannerProps {
-  advertisement: Advertisement;
-  onClose?: () => void;
+  height?: number;
 }
 
-export default function AdvertisementBanner({ advertisement, onClose }: AdvertisementBannerProps) {
-  const handlePress = async () => {
-    if (advertisement.link_url) {
+export default function AdvertisementBanner({ height = 120 }: AdvertisementBannerProps) {
+  const [currentAdIndex, setCurrentAdIndex] = useState(0);
+  const [isVisible, setIsVisible] = useState(true);
+
+  // Fetch active advertisements
+  const { data: advertisements = [], isLoading } = useQuery(getActiveAdvertisementsOptions());
+
+  // Auto-rotate advertisements every 5-6 seconds
+  useEffect(() => {
+    if (advertisements.length <= 1) return;
+
+    const interval = setInterval(() => {
+      setIsVisible(false); // Fade out current ad
+
+      setTimeout(() => {
+        setCurrentAdIndex((prevIndex) => (prevIndex + 1) % advertisements.length);
+        setIsVisible(true); // Fade in next ad
+      }, 300); // Half of transition duration
+    }, 5500); // 5.5 seconds total (5 seconds display + 0.5 second transition)
+
+    return () => clearInterval(interval);
+  }, [advertisements.length]);
+
+  // Handle advertisement click
+  const handleAdPress = async (ad: Advertisement) => {
+    if (ad.link_url) {
       try {
-        const supported = await Linking.canOpenURL(advertisement.link_url);
-        if (supported) {
-          await Linking.openURL(advertisement.link_url);
-        } else {
-          Alert.alert('Error', 'Cannot open this link');
-        }
+        await Linking.openURL(ad.link_url);
       } catch (error) {
-        Alert.alert('Error', 'Failed to open link');
+        console.warn('Failed to open advertisement URL:', error);
       }
     }
   };
 
+  // Don't render if no advertisements or still loading
+  if (isLoading || advertisements.length === 0) {
+    return null;
+  }
+
+  const currentAd = advertisements[currentAdIndex];
+
   return (
-    <View style={styles.container}>
-      <TouchableOpacity onPress={handlePress} activeOpacity={0.9} style={styles.bannerTouchable}>
+    <View style={[styles.container, { height }]}>
+      <TouchableOpacity
+        style={styles.bannerTouchable}
+        onPress={() => handleAdPress(currentAd)}
+        activeOpacity={0.9}
+      >
         <Image
-          source={{ uri: advertisement.image_url }}
-          style={styles.bannerImage}
+          source={{ uri: currentAd.image_url }}
+          style={styles.adImage}
           resizeMode="cover"
         />
-        <View style={styles.overlay}>
-          <View style={styles.titleContainer}>
-            <Text style={styles.title} numberOfLines={2}>
-              {advertisement.title}
-            </Text>
-            {advertisement.link_url && (
-              <View style={styles.linkIndicator}>
-                <Ionicons name="open-outline" size={14} color="#ffffff" />
-                <Text style={styles.linkText}>Tap to learn more</Text>
-              </View>
-            )}
-          </View>
-        </View>
       </TouchableOpacity>
-
-      {onClose && (
-        <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-          <Ionicons name="close" size={20} color="#ffffff" />
-        </TouchableOpacity>
-      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    position: 'relative',
-    marginHorizontal: 16,
+    width: '100%',
     marginVertical: 8,
-    borderRadius: 8,
-    overflow: 'hidden',
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    paddingHorizontal: 16,
   },
   bannerTouchable: {
-    position: 'relative',
+    flex: 1,
     borderRadius: 8,
+    overflow: 'hidden',
   },
-  bannerImage: {
+  adImage: {
     width: '100%',
-    height: 100,
-    borderRadius: 8,
-  },
-  overlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-    padding: 15,
-    borderRadius: 8,
-  },
-  titleContainer: {
-    justifyContent: 'flex-end',
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#ffffff',
-    marginBottom: 6,
-    textShadowColor: 'rgba(0, 0, 0, 0.8)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
-    lineHeight: 20,
-  },
-  linkIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    alignSelf: 'flex-start',
-  },
-  linkText: {
-    fontSize: 12,
-    color: '#ffffff',
-    marginLeft: 4,
-    fontWeight: '600',
-    textShadowColor: 'rgba(0, 0, 0, 0.8)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
-  },
-  closeButton: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    borderRadius: 18,
-    width: 36,
-    height: 36,
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 10,
-    elevation: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.5,
-    shadowRadius: 4,
+    height: '100%',
   },
 });
-
-

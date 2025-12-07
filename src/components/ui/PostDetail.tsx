@@ -9,6 +9,7 @@ import {
   Linking,
   RefreshControl,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -116,6 +117,49 @@ export default function PostDetail({ post, postId, onLike, onComment, onShare }:
   const handleCommentsChange = (updatedComments: Comment[]) => {
     setComments(updatedComments);
     setCommentsCount(updatedComments.length);
+  };
+
+  const handleShare = async () => {
+    try {
+      const currentPost = postData || post;
+      if (!currentPost) return;
+
+      let message = currentPost.content || '';
+
+      // Add YouTube link if available
+      if (currentPost.youtube_url) {
+        message += `\n\nYouTube: ${currentPost.youtube_url}`;
+      }
+
+      // Add document links if available
+      if (currentPost.document_urls && currentPost.document_urls.length > 0) {
+        message += '\n\nDocuments:';
+        currentPost.document_urls.forEach(url => {
+          message += `\n${url}`;
+        });
+      }
+
+      const result = await Share.share({
+        message: message.trim(),
+        url: currentPost.media_urls && currentPost.media_urls.length > 0 ? currentPost.media_urls[0] : undefined,
+      });
+
+      if (result.action === Share.sharedAction) {
+        if (result.activityType) {
+          // Shared with activity type of result.activityType
+        } else {
+          // Shared
+        }
+      } else if (result.action === Share.dismissedAction) {
+        // Dismissed
+      }
+
+      // Call the parent onShare callback if provided
+      onShare?.();
+    } catch (error) {
+      console.error('Error sharing post:', error);
+      Alert.alert('Error', 'Failed to share post. Please try again.');
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -400,17 +444,30 @@ export default function PostDetail({ post, postId, onLike, onComment, onShare }:
   }
 
   return (
-    <ScrollView
-      style={styles.container}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={handleRefresh}
-          colors={['#AF2225']}
-        />
-      }
-    >
-      {/* Sponsored Badge */}
+    <View style={styles.container}>
+      {/* Fixed Back Button */}
+      <View style={styles.fixedBackButtonContainer}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
+          <Ionicons name="chevron-back" size={24} color="#333" />
+          <Text style={styles.backButtonText}>Back</Text>
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView
+        style={styles.scrollContainer}
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            colors={['#AF2225']}
+          />
+        }
+      >
+        {/* Sponsored Badge */}
       {postData?.sponsored && (
         <View style={styles.sponsoredBadge}>
           <Ionicons name="megaphone" size={14} color="#666" />
@@ -488,7 +545,7 @@ export default function PostDetail({ post, postId, onLike, onComment, onShare }:
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.actionButton} onPress={onShare}>
+        <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
           <Ionicons name="share-outline" size={20} color="#666" />
           <Text style={styles.actionText}>Share</Text>
         </TouchableOpacity>
@@ -511,7 +568,8 @@ export default function PostDetail({ post, postId, onLike, onComment, onShare }:
           onComment?.();
         }}
       />
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -519,6 +577,42 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#ffffff',
+    
+  },
+  fixedBackButtonContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    paddingTop: 30,
+  },
+  scrollContainer: {
+    flex: 1,
+    paddingTop: 70, // Space for fixed header
+    marginHorizontal: 16,
+    marginVertical: 8,
+  },
+  scrollContent: {
+    paddingBottom: 40, // Extra padding to ensure last content is visible
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    alignSelf: 'flex-start',
+  },
+  backButtonText: {
+    fontSize: 16,
+    color: '#333',
+    marginLeft: 4,
+    fontWeight: '500',
   },
   loadingContainer: {
     flex: 1,
@@ -548,6 +642,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     marginBottom: 12,
+    marginTop: 20,
     paddingHorizontal: 16,
   },
   avatar: {
@@ -589,7 +684,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   link: {
-    color: '#059669',
+    color: '#1d4ed8',
     fontWeight: '500',
     textDecorationLine: 'underline',
   },
@@ -737,6 +832,7 @@ const styles = StyleSheet.create({
   },
   commentsPreview: {
     padding: 16,
+    paddingBottom: 30,
   },
   commentsPreviewHeader: {
     flexDirection: 'row',

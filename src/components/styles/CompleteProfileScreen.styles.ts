@@ -5,11 +5,9 @@ const { width } = Dimensions.get('window');
 export const completeProfileScreenStyles = StyleSheet.create({
   // Container & Layout
   container: {
+    paddingTop: 20,
     flex: 1,
     backgroundColor: '#f3f4f6',
-  },
-  gradient: {
-    flex: 1,
   },
   keyboardAvoidingView: {
     flex: 1,
@@ -18,14 +16,21 @@ export const completeProfileScreenStyles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingTop: 20,
-    paddingBottom: 20,
-    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 40,
+    paddingHorizontal: 20,
   },
 
   // Header Section
   header: {
     marginBottom: 24,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+    gap: 12,
   },
   headerTitle: {
     fontFamily: 'Inter_700Bold',
@@ -39,8 +44,22 @@ export const completeProfileScreenStyles = StyleSheet.create({
     color: '#1c1c1c',
     textAlign: 'left',
   },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    gap: 6,
+  },
+  logoutButtonText: {
+    fontFamily: 'Inter_500Medium',
+    color: '#0f172a',
+    fontSize: 13,
+  },
 
-  // Progress Section
+  // Progress
   progressContainer: {
     marginBottom: 24,
   },
@@ -67,22 +86,17 @@ export const completeProfileScreenStyles = StyleSheet.create({
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#DC2626',
+    backgroundColor: '#111827',
     borderRadius: 4,
   },
+
 
   // Main Form Card
   formCard: {
     backgroundColor: 'white',
     borderRadius: 16,
-    padding: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 20,
-    elevation: 8,
-    borderWidth: 1,
-    borderColor: '#fef2f2',
+    padding: 20,
+    gap: 16,
   },
 
   // Tab Styles (for Exhibitors)
@@ -100,39 +114,16 @@ export const completeProfileScreenStyles = StyleSheet.create({
     fontSize: 14,
     color: '#6B7280',
   },
-  tabStatusContainer: {
-    flexDirection: 'row',
-    marginBottom: 16,
-  },
-  tabStatusItem: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  tabStatusLabel: {
-    fontFamily: 'Inter_500Medium',
-    fontSize: 12,
-    marginBottom: 4,
-  },
-  tabStatusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 12,
-  },
-  tabStatusText: {
-    fontFamily: 'Inter_500Medium',
-    fontSize: 10,
-  },
   tabContainer: {
     flexDirection: 'row',
     backgroundColor: '#F3F4F6',
-    borderRadius: 8,
+    borderRadius: 4,
     marginBottom: 20,
   },
   tab: {
     flex: 1,
     paddingVertical: 12,
-    borderRadius: 8,
+    borderRadius: 4,
     margin: 2,
   },
   activeTab: {
@@ -153,9 +144,60 @@ export const completeProfileScreenStyles = StyleSheet.create({
   // Form Content
   formContent: {
     width: '100%',
+    gap: 20,
+  },
+  photoSection: {
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 8,
+  },
+  photoPlaceholder: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: '#E5E7EB',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  photoImage: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+  },
+  photoButtonsRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  photoButton: {
+    backgroundColor: '#111827',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 999,
+  },
+  photoButtonText: {
+    color: '#ffffff',
+    fontFamily: 'Inter_500Medium',
+  },
+  photoSecondaryButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  photoSecondaryButtonText: {
+    color: '#111827',
+    fontFamily: 'Inter_500Medium',
+  },
+  photoHint: {
+    fontSize: 12,
+    color: '#6B7280',
   },
 
   // Input Styles
+  inputGroup: {
+    marginBottom: 4,
+  },
   inputContainer: {
     marginBottom: 16,
   },
@@ -168,21 +210,37 @@ export const completeProfileScreenStyles = StyleSheet.create({
     width: '100%',
   },
   label: {
-    fontFamily: 'Inter_500Medium',
     fontSize: 14,
-    color: '#374151',
+    fontWeight: '600',
+    color: '#111827',
     marginBottom: 8,
   },
-  input: {
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
-    color: '#11181C',
-    backgroundColor: 'white',
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    minHeight: 40,
+  },
+  inputWrapperError: {
+    borderColor: '#f97316',
+    backgroundColor: '#fff7ed',
+  },
+  inputIcon: {
+    marginRight: 12,
+  },
+  input: {
+    flex: 1,
+    fontSize: 14,
+    color: '#111827',
     fontFamily: 'Inter_400Regular',
+  },
+  multilineInput: {
+    minHeight: 80,
+    textAlignVertical: 'top',
   },
   inputError: {
     borderColor: '#DC2626',
@@ -228,22 +286,26 @@ export const completeProfileScreenStyles = StyleSheet.create({
     fontFamily: 'Inter_600SemiBold',
     fontSize: 16,
     color: '#111827',
-    marginBottom: 16,
+    marginBottom: 12,
+  },
+  section: {
+    gap: 12,
+  },
+  sectionTitle: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 16,
+    color: '#0f172a',
   },
 
   // Button Styles
   primaryButton: {
     backgroundColor: '#000000',
-    paddingVertical: 16,
     borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    flexDirection: 'row',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
   registerButton: {
     backgroundColor: '#DC2626',
@@ -261,24 +323,6 @@ export const completeProfileScreenStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-
- 
-  successContainer: {
-    backgroundColor: '#f0fdf4',
-    borderWidth: 1,
-    borderColor: '#bbf7d0',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
-  },
-  successText: {
-    fontSize: 14,
-    color: '#166534',
-    textAlign: 'center',
-    fontFamily: 'Inter_500Medium',
-  },
-
-
   helperText: {
     fontSize: 12,
     color: '#6B7280',
