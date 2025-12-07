@@ -61,7 +61,7 @@ export default function MobileBottomNavigation({
   const activeTab = propActiveTab || getActiveTabFromPath(pathname);
 
   const isPremiumRouteForItem = (itemId: string) =>
-    (itemId === 'network' || itemId === 'message') && isVisitorUnpaid;
+    itemId === 'message' && isVisitorUnpaid;
 
   const renderIcon = (item: NavigationItem, isActive: boolean) => {
     const iconColor = isActive ? '#AF2225' : '#666666';
@@ -91,7 +91,7 @@ export default function MobileBottomNavigation({
 
     // premium check
     if (isPremiumRouteForItem(item.id)) {
-      const featureName = item.id === 'network' ? 'My Network' : item.id === 'message' ? 'Message' : 'Feature';
+      const featureName = item.id === 'message' ? 'Message' : 'Feature';
       setPremiumFeatureName(featureName);
       setIsPremiumModalVisible(true);
       return;
